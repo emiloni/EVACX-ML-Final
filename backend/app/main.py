@@ -241,8 +241,6 @@ from app.graph.demo_graph import create_demo_graph
 # MULTI-PHOTO RECONSTRUCTION PIPELINE
 # ==========================================================
 
-from app.reconstruction.reconstruction_pipeline import run_reconstruction
-
 
 @app.post("/api/v1/building/reconstruct")
 async def reconstruct_building(
@@ -256,10 +254,12 @@ async def reconstruct_building(
 
     Photos should be uploaded in capture order with 40-70% visual overlap.
     """
+    from app.reconstruction.reconstruction_pipeline import run_reconstruction
+    from app.models.detection_models import ReferenceMeasurement, ReferenceType
+
     reference = None
     if reference_type and reference_value is not None:
         try:
-            from app.models.detection_models import ReferenceType
             rt = ReferenceType(reference_type)
             reference = ReferenceMeasurement(
                 reference_type=rt, value=reference_value, unit=reference_unit,
@@ -297,8 +297,6 @@ async def reconstruct_building(
 # PHOTO RECONSTRUCTION PIPELINE
 # ==========================================================
 
-from app.ai.photo_pipeline import run_photo_pipeline
-from app.models.detection_models import ReferenceMeasurement, ReferenceType
 
 
 @app.post("/api/v1/building/photo-reconstruction")
@@ -322,6 +320,8 @@ async def photo_reconstruction(
     floor : floor number (default 1).
     mobility : mobility profile for routing (default "normal").
     """
+    from app.ai.photo_pipeline import run_photo_pipeline
+    from app.models.detection_models import ReferenceMeasurement, ReferenceType
 
     # -- Parse reference measurement --
     reference = None

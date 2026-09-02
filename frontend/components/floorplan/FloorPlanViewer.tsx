@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  useState, useRef, useCallback, useMemo, useEffect,
+  useState, useRef, useCallback, useEffect,
 } from "react";
 
 /* ============================================================
@@ -20,7 +20,7 @@ interface FloorElement {
   confidence: number;
   wheelchair_accessible?: boolean;
   estimated?: boolean;
-  source?: string; // "ai_detected" | "user_added" | "user_corrected"
+  source?: string;
   original_confidence?: number;
 }
 
@@ -40,11 +40,37 @@ interface EditOperation {
   after: Partial<FloorElement> | null;
 }
 
+/* ---- Simulation overlay types ---- */
+
+export interface RouteOverlay {
+  occupantId: string;
+  points: Array<{ x: number; y: number }>;
+  color: string;
+  isSelected: boolean;
+}
+
+export interface OccupantOverlay {
+  id: string;
+  x: number;
+  y: number;
+  mobility: string;
+  name: string;
+  status: "waiting" | "evacuating" | "evacuated" | "blocked" | "no_route";
+}
+
 interface FloorPlanViewerProps {
   floorPlan: FloorPlanData;
   onChange?: (plan: FloorPlanData) => void;
   onSave?: (plan: FloorPlanData) => void;
   className?: string;
+  /** When set, the fire room gets a hazard overlay */
+  fireRoomId?: string;
+  /** Evacuation routes to draw on the floor plan */
+  routes?: RouteOverlay[];
+  /** Occupant markers to display */
+  occupants?: OccupantOverlay[];
+  /** When true, editing tools are locked */
+  simulationMode?: boolean;
 }
 
 /* ============================================================
@@ -81,6 +107,10 @@ export default function FloorPlanViewer({
   onChange,
   onSave,
   className = "",
+  fireRoomId,
+  routes = [],
+  occupants = [],
+  simulationMode = false,
 }: FloorPlanViewerProps) {
   // --- View state ---
   const [zoom, setZoom] = useState(1);
@@ -129,18 +159,10 @@ export default function FloorPlanViewer({
     setValidationIssues([]);
   }, [floorPlan]);
 
-  // --- Coordinate transforms ---
-  const worldToScreen = useCallback(
-    (wx: number, wy: number) => {
-      const pad = 40;
-      return {
-        x: pad + wx * zoom + pan.x,
-        y: pad + wy * zoom + pan.y,
-      };
-    },
-    [zoom, pan]
-  );
+  // Lock editing when simulation mode is active
+  const effectiveEditMode = simulationMode ? false : editMode;
 
+  // --- Coordinate transforms ---
   const screenToWorld = useCallback(
     (sx: number, sy: number) => {
       const pad = 40;
@@ -212,7 +234,7 @@ export default function FloorPlanViewer({
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (!editMode) return;
+      if (!effectiveEditMode) return;
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) { e.preventDefault(); redo(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "y") { e.preventDefault(); redo(); }
@@ -226,16 +248,14 @@ export default function FloorPlanViewer({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [editMode, selectedId, undo, redo]);
+  }, [effectiveEditMode, selectedId, undo, redo]);
 
   // --- Element operations ---
   const updateElement = useCallback((id: string, changes: Partial<FloorElement>) => {
-    setDraft((prev) => {
-      const elements = prev.elements.map((e) =>
-        e.id === id ? { ...e, ...changes } : e
-      );
-      return { ...prev, elements };
-    });
+    setDraft((prev) => ({
+      ...prev,
+      elements: prev.elements.map((e) => e.id === id ? { ...e, ...changes } : e),
+    }));
     setUnsaved(true);
   }, []);
 
@@ -275,11 +295,8 @@ export default function FloorPlanViewer({
   const validate = useCallback(() => {
     const issues: string[] = [];
     const elements = draft.elements;
-    // Check corridors exist
     if (!elements.some((e) => e.type === "corridor")) issues.push("No corridor element");
-    // Check exits exist
     if (!elements.some((e) => e.type === "exit")) issues.push("No exit element");
-    // Check room overlap
     const rooms = elements.filter((e) => e.type === "room");
     for (let i = 0; i < rooms.length; i++) {
       for (let j = i + 1; j < rooms.length; j++) {
@@ -289,7 +306,6 @@ export default function FloorPlanViewer({
         if (ox > 0 && oy > 0) issues.push(`Room overlap: ${a.id} and ${b.id}`);
       }
     }
-    // Check exit near corridor
     const corridors = elements.filter((e) => e.type === "corridor");
     const exits = elements.filter((e) => e.type === "exit");
     for (const ex of exits) {
@@ -308,7 +324,6 @@ export default function FloorPlanViewer({
   const handleSave = useCallback(() => {
     const issues = validate();
     if (issues.length > 0) return;
-    // Mark all as user_corrected
     const finalElements = draft.elements.map((e) => ({
       ...e,
       source: e.source === "user_added" ? "user_added" : "user_corrected",
@@ -322,20 +337,19 @@ export default function FloorPlanViewer({
 
   // --- Mouse handlers ---
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (simulationMode) return;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const sx = e.clientX - rect.left;
     const sy = e.clientY - rect.top;
 
-    // Add mode — place element
-    if (addType && editMode) {
+    if (addType && effectiveEditMode) {
       const world = screenToWorld(sx, sy);
       addElement(addType, world.x, world.y);
       return;
     }
 
-    // Check if clicked on an element
-    if (editMode) {
+    if (effectiveEditMode) {
       const world = screenToWorld(sx, sy);
       const clicked = [...draft.elements].reverse().find((el) => {
         return world.x >= el.x && world.x <= el.x + el.width &&
@@ -353,13 +367,12 @@ export default function FloorPlanViewer({
       setSelectedId(null);
     }
 
-    // Pan
     setDragging(true);
     dragRef.current = {
       elementId: null, startX: e.clientX, startY: e.clientY,
       origX: pan.x, origY: pan.y, isPan: true,
     };
-  }, [editMode, addType, draft.elements, screenToWorld, pan, addElement]);
+  }, [simulationMode, effectiveEditMode, addType, draft.elements, screenToWorld, pan, addElement]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!dragging) return;
@@ -404,6 +417,10 @@ export default function FloorPlanViewer({
     return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
   });
 
+  // Helper: world coords → screen coords for SVG
+  const wx = (vx: number) => pad + vx * zoom;
+  const wy = (vy: number) => pad + vy * zoom;
+
   return (
     <div className={`rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm ${className}`}>
       {/* ── Toolbar ── */}
@@ -411,36 +428,61 @@ export default function FloorPlanViewer({
         <div className="flex items-center gap-3">
           <h3 className="text-sm font-semibold text-slate-800">2D Floor Plan</h3>
           {unsaved && <span className="text-[10px] text-amber-500">● Unsaved changes</span>}
+          {simulationMode && <span className="text-[10px] text-teal-600 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5">Simulation Mode</span>}
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Mode toggle */}
-          <button
-            onClick={() => { setEditMode(false); setSelectedId(null); setAddType(null); }}
-            className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
-              !editMode ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"
-            }`}
-          >View</button>
-          <button
-            onClick={() => setEditMode(true)}
-            className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
-              editMode ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"
-            }`}
-          >Edit</button>
+          {!simulationMode && (
+            <>
+              <button
+                onClick={() => { setEditMode(false); setSelectedId(null); setAddType(null); }}
+                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
+                  !editMode ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"
+                }`}
+              >View</button>
+              <button
+                onClick={() => setEditMode(true)}
+                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
+                  editMode ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"
+                }`}
+              >Edit</button>
+
+              <div className="w-px h-4 bg-slate-200 mx-1" />
+
+              <button onClick={undo} disabled={historyIndex < 0}
+                className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200 disabled:opacity-30"
+                title="Undo (Ctrl+Z)">↩</button>
+              <button onClick={redo} disabled={historyIndex >= history.length - 1}
+                className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200 disabled:opacity-30"
+                title="Redo (Ctrl+Shift+Z)">↪</button>
+
+              <div className="w-px h-4 bg-slate-200 mx-1" />
+
+              {editMode && (
+                <>
+                  <button onClick={() => setShowGrid((g) => !g)}
+                    className={`rounded-md px-2 py-1 text-[11px] ${showGrid ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"}`}>
+                    Grid
+                  </button>
+                  <button onClick={() => setSnapToGrid((s) => !s)}
+                    className={`rounded-md px-2 py-1 text-[11px] ${snapToGrid ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"}`}>
+                    Snap
+                  </button>
+                  <div className="w-px h-4 bg-slate-200 mx-1" />
+                </>
+              )}
+
+              <button onClick={validate}
+                className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600 hover:bg-slate-200">Validate</button>
+              <button onClick={handleSave} disabled={!unsaved || validationIssues.length > 0}
+                className="rounded-md bg-teal-600 px-2.5 py-1 text-[11px] text-white hover:bg-teal-700 disabled:opacity-40">
+                Save
+              </button>
+            </>
+          )}
 
           <div className="w-px h-4 bg-slate-200 mx-1" />
 
-          {/* Undo/Redo */}
-          <button onClick={undo} disabled={historyIndex < 0}
-            className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200 disabled:opacity-30"
-            title="Undo (Ctrl+Z)">↩</button>
-          <button onClick={redo} disabled={historyIndex >= history.length - 1}
-            className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200 disabled:opacity-30"
-            title="Redo (Ctrl+Shift+Z)">↪</button>
-
-          <div className="w-px h-4 bg-slate-200 mx-1" />
-
-          {/* Zoom */}
           <button onClick={() => setZoom((z) => Math.min(z + 0.2, 4))}
             className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200">+</button>
           <button onClick={() => setZoom((z) => Math.max(z - 0.2, 0.2))}
@@ -448,34 +490,11 @@ export default function FloorPlanViewer({
           <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
             className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200">Fit</button>
           <span className="text-[10px] text-slate-400 w-8 text-right">{Math.round(zoom * 100)}%</span>
-
-          {editMode && (
-            <>
-              <div className="w-px h-4 bg-slate-200 mx-1" />
-              <button onClick={() => setShowGrid((g) => !g)}
-                className={`rounded-md px-2 py-1 text-[11px] ${showGrid ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"}`}>
-                Grid
-              </button>
-              <button onClick={() => setSnapToGrid((s) => !s)}
-                className={`rounded-md px-2 py-1 text-[11px] ${snapToGrid ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"}`}>
-                Snap
-              </button>
-            </>
-          )}
-
-          <div className="w-px h-4 bg-slate-200 mx-1" />
-
-          <button onClick={validate}
-            className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600 hover:bg-slate-200">Validate</button>
-          <button onClick={handleSave} disabled={!unsaved || validationIssues.length > 0}
-            className="rounded-md bg-teal-600 px-2.5 py-1 text-[11px] text-white hover:bg-teal-700 disabled:opacity-40">
-            Save
-          </button>
         </div>
       </div>
 
       {/* ── Add toolbar (edit mode only) ── */}
-      {editMode && (
+      {effectiveEditMode && (
         <div className="flex items-center gap-1.5 border-b border-slate-100 px-4 py-1.5 bg-slate-50">
           <span className="text-[10px] text-slate-400 mr-1">Add:</span>
           {ADDABLE_TYPES.map((t) => (
@@ -496,7 +515,7 @@ export default function FloorPlanViewer({
       <div
         ref={containerRef}
         className={`relative min-h-[520px] overflow-hidden bg-slate-50 select-none ${
-          editMode ? (addType ? "cursor-crosshair" : "cursor-default") : "cursor-grab active:cursor-grabbing"
+          simulationMode ? "cursor-default" : effectiveEditMode ? (addType ? "cursor-crosshair" : "cursor-default") : "cursor-grab active:cursor-grabbing"
         }`}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
@@ -508,7 +527,7 @@ export default function FloorPlanViewer({
           style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }}>
 
           {/* Grid */}
-          {showGrid && editMode && (
+          {showGrid && effectiveEditMode && (
             <defs>
               <pattern id="grid" width={GRID_SIZE * zoom} height={GRID_SIZE * zoom} patternUnits="userSpaceOnUse">
                 <path d={`M ${GRID_SIZE * zoom} 0 L 0 0 0 ${GRID_SIZE * zoom}`}
@@ -516,11 +535,11 @@ export default function FloorPlanViewer({
               </pattern>
             </defs>
           )}
-          {showGrid && editMode && (
+          {showGrid && effectiveEditMode && (
             <rect width="100%" height="100%" fill="url(#grid)" style={{ transform: `translate(${pan.x}px, ${pan.y}px)` }} />
           )}
 
-          {/* Elements */}
+          {/* Layer 1-4: Floor plan elements */}
           {sorted.map((el) => {
             const c = COLORS[el.type] || { fill: "#f1f5f9", stroke: "#94a3b8", text: "#475569" };
             const isLow = el.confidence < 0.4;
@@ -531,29 +550,38 @@ export default function FloorPlanViewer({
             const w = Math.max(el.width * zoom, 2);
             const h = Math.max(el.height * zoom, 2);
 
+            // Fire room overlay
+            const isFireRoom = fireRoomId === el.id;
+
             return (
               <g key={el.id}>
                 <rect
                   x={x} y={y} width={w} height={h}
                   rx={el.type === "door" ? 1 : 3}
-                  fill={c.fill}
-                  stroke={isSel ? "#0d9488" : isUserAdded ? "#0891b2" : c.stroke}
-                  strokeWidth={isSel ? 2.5 : 1.5}
+                  fill={isFireRoom ? "#fee2e2" : c.fill}
+                  stroke={isFireRoom ? "#ef4444" : isSel ? "#0d9488" : isUserAdded ? "#0891b2" : c.stroke}
+                  strokeWidth={isFireRoom ? 2.5 : isSel ? 2.5 : 1.5}
                   strokeDasharray={isLow && !isUserAdded ? "4,2" : undefined}
                   opacity={isLow && !isUserAdded ? 0.6 : 1}
-                  style={{ cursor: editMode ? "pointer" : "inherit" }}
+                  style={{ cursor: effectiveEditMode ? "pointer" : "inherit" }}
                 />
                 {w > 35 && h > 14 && (
-                  <text x={x + w / 2} y={y + h / 2} textAnchor="middle"
-                    dominantBaseline="central" fill={c.text}
+                  <text x={x + w / 2} y={y + h / 2 - (isFireRoom ? 6 : 0)} textAnchor="middle"
+                    dominantBaseline="central" fill={isFireRoom ? "#991b1b" : c.text}
                     fontSize={Math.min(9, w / 6)} fontFamily="system-ui" fontWeight={600} opacity={0.9}>
                     {LABELS[el.type] || el.type}
                   </text>
                 )}
+                {/* Fire icon */}
+                {isFireRoom && (
+                  <text x={x + w / 2} y={y + h / 2 + 10} textAnchor="middle" dominantBaseline="central"
+                    fontSize={Math.min(20, w / 3)} className="select-none pointer-events-none">
+                    🔥
+                  </text>
+                )}
                 {isLow && !isUserAdded && <text x={x + w - 6} y={y + 2} fontSize={8} fill="#eab308">⚠</text>}
                 {isUserAdded && <text x={x + 2} y={y + 10} fontSize={7} fill="#0891b2">+</text>}
-                {/* Selection handles */}
-                {isSel && editMode && (
+                {isSel && effectiveEditMode && (
                   <>
                     <rect x={x - 3} y={y - 3} width={6} height={6} fill="#0d9488" rx={1} />
                     <rect x={x + w - 3} y={y - 3} width={6} height={6} fill="#0d9488" rx={1} />
@@ -564,7 +592,123 @@ export default function FloorPlanViewer({
               </g>
             );
           })}
+
+          {/* Layer 5: Fire room glow (animated) */}
+          {fireRoomId && (() => {
+            const fireEl = draft.elements.find((e) => e.id === fireRoomId);
+            if (!fireEl) return null;
+            const x = pad + fireEl.x * zoom;
+            const y = pad + fireEl.y * zoom;
+            const w = Math.max(fireEl.width * zoom, 2);
+            const h = Math.max(fireEl.height * zoom, 2);
+            return (
+              <rect
+                x={x - 3} y={y - 3} width={w + 6} height={h + 6}
+                rx={5} fill="none" stroke="#ef4444" strokeWidth={1.5}
+                opacity={0.5}
+                style={{ animation: "pulse-fire 2s ease-in-out infinite" }}
+              />
+            );
+          })()}
+
+          {/* Layer 6: Evacuation routes */}
+          {routes.map((route) => {
+            if (route.points.length < 2) return null;
+            const pathD = route.points
+              .map((p, i) => `${i === 0 ? "M" : "L"} ${wx(p.x)} ${wy(p.y)}`)
+              .join(" ");
+            return (
+              <g key={route.occupantId}>
+                {/* Route shadow */}
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke={route.color}
+                  strokeWidth={route.isSelected ? 5 : 3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity={route.isSelected ? 0.25 : 0.12}
+                />
+                {/* Route line */}
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke={route.color}
+                  strokeWidth={route.isSelected ? 3 : 2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray={route.isSelected ? "none" : "8,4"}
+                  opacity={route.isSelected ? 1 : 0.7}
+                />
+              </g>
+            );
+          })}
+
+          {/* Layer 7: Occupant markers */}
+          {occupants.map((occ) => {
+            const sx = wx(occ.x);
+            const sy = wy(occ.y);
+            const isEvacuated = occ.status === "evacuated";
+            const isBlocked = occ.status === "blocked" || occ.status === "no_route";
+            const isWheelchair = occ.mobility === "wheelchair";
+
+            let markerColor = "#0d9488"; // teal for normal
+            if (isEvacuated) markerColor = "#10b981"; // green
+            if (isBlocked) markerColor = "#ef4444"; // red
+            if (occ.status === "evacuating") markerColor = "#0891b2"; // cyan
+
+            return (
+              <g key={occ.id}>
+                {/* Marker circle */}
+                <circle
+                  cx={sx} cy={sy} r={isWheelchair ? 10 : 7}
+                  fill={markerColor}
+                  stroke="white"
+                  strokeWidth={2}
+                  opacity={isEvacuated ? 0.5 : 1}
+                />
+                {/* Mobility icon inside */}
+                {isWheelchair && (
+                  <text x={sx} y={sy} textAnchor="middle" dominantBaseline="central"
+                    fontSize={10} fill="white" fontWeight="bold">♿</text>
+                )}
+                {!isWheelchair && !isBlocked && (
+                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="central"
+                    fontSize={8} fill="white" fontWeight="bold">
+                    {occ.status === "evacuated" ? "✓" : occ.status === "evacuating" ? "→" : "●"}
+                  </text>
+                )}
+                {isBlocked && (
+                  <text x={sx} y={sy + 1} textAnchor="middle" dominantBaseline="central"
+                    fontSize={8} fill="white" fontWeight="bold">✕</text>
+                )}
+                {/* Name label */}
+                <text
+                  x={sx} y={sy - (isWheelchair ? 14 : 11)}
+                  textAnchor="middle" fontSize={9} fontWeight={600}
+                  fill={isBlocked ? "#ef4444" : "#0d9488"}
+                  fontFamily="system-ui"
+                  className="select-none pointer-events-none"
+                >
+                  {occ.name}
+                </text>
+                {/* Evacuated checkmark */}
+                {isEvacuated && (
+                  <text x={sx} y={sy - (isWheelchair ? 22 : 19)} textAnchor="middle"
+                    fontSize={10} fill="#10b981">✓</text>
+                )}
+              </g>
+            );
+          })}
         </svg>
+
+        {/* Animation keyframes */}
+        <style>{`
+          @keyframes pulse-fire {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+          }
+        `}</style>
 
         {/* Legend */}
         <div className="absolute bottom-3 left-3 rounded-lg border border-slate-200 bg-white/95 p-2.5 backdrop-blur shadow-sm">
@@ -575,11 +719,29 @@ export default function FloorPlanViewer({
                 <span className="text-slate-500">{LABELS[type] || type}</span>
               </div>
             ))}
+            {fireRoomId && (
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-3 rounded-sm bg-red-100" style={{ border: "1px solid #ef4444" }} />
+                <span className="text-red-600">Fire Zone</span>
+              </div>
+            )}
+            {routes.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="h-0.5 w-3 rounded" style={{ backgroundColor: "#0d9488" }} />
+                <span className="text-slate-500">Evacuation Route</span>
+              </div>
+            )}
+            {occupants.length > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-teal-500" />
+                <span className="text-slate-500">Occupant</span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Selected element panel */}
-        {selectedId && editMode && (() => {
+        {selectedId && effectiveEditMode && (() => {
           const el = draft.elements.find((e) => e.id === selectedId);
           if (!el) return null;
           return (
