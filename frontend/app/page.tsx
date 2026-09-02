@@ -3,6 +3,7 @@
 import {
   useEffect,
   useState,
+  type ChangeEvent,
 } from "react";
 import Link from "next/link";
 
@@ -292,6 +293,12 @@ function handleImageSelect(
                 </p>
               </div>
 
+              <Link
+                href="/buildings/new"
+                className="rounded-lg border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-xs font-medium text-teal-300 transition hover:bg-teal-500/20"
+              >
+                🏢 Create Building
+              </Link>
               <Link
                 href="/reconstruct"
                 className="rounded-lg border border-purple-500/30 bg-purple-500/10 px-4 py-2 text-xs font-medium text-purple-300 transition hover:bg-purple-500/20"

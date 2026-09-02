@@ -2,8 +2,20 @@
  * evacuation-routing.ts
  *
  * Client-side evacuation route calculation.
- * Uses BFS with mobility constraints and fire blocking.
- * Wheelchair users prefer routes through ramps.
+ * Uses BFS with mobility constraints, fire blocking, and congestion penalties.
+ *
+ * Congestion penalty pattern (from reference safety.py):
+ *   effective_cost = base_distance * congestion_multiplier
+ * where multiplier depends on zone congestion status:
+ *   NORMAL → 1.0 (no penalty)
+ *   HIGH_OCCUPANCY → 1.5
+ *   CONGESTED → 3.0
+ *   BOTTLENECK → 8.0
+ *
+ * Wheelchair users:
+ *   - Never use stairs
+ *   - Prefer routes through ramps
+ *   - Accessible-only edges
  */
 
 import type {
@@ -37,6 +49,7 @@ export interface RouteResult {
   usesStairs: boolean;
   usesRamp: boolean;
   accessibleRoute: boolean;
+  congestionPenalty: number; // total penalty applied to this route
   status:
     | "waiting"
     | "evacuating"
@@ -51,6 +64,25 @@ export interface EvacuationPlan {
   blockedNodes: string[];
   blockedEdges: Set<string>;
   routes: RouteResult[];
+}
+
+/* ============================================================
+   Congestion penalty map (zone_id → multiplier)
+   ============================================================ */
+
+export type CongestionPenalties = Record<string, number>;
+
+const DEFAULT_CONGESTION_MULTIPLIER = 1.0;
+
+/**
+ * Get the congestion multiplier for a given zone/element ID.
+ * Falls back to 1.0 if no penalty data exists.
+ */
+function getCongestionMultiplier(
+  elementId: string,
+  penalties: CongestionPenalties
+): number {
+  return penalties[elementId] ?? DEFAULT_CONGESTION_MULTIPLIER;
 }
 
 /* ============================================================
@@ -88,50 +120,69 @@ function filterBlockedEdges(
 }
 
 /* ============================================================
-   BFS helpers
+   BFS helpers with congestion-weighted paths
    ============================================================ */
 
-/** Build adjacency list from edges */
-function buildAdj(validEdges: GraphEdge[]): Map<string, string[]> {
-  const adj = new Map<string, string[]>();
+/**
+ * Build weighted adjacency list from edges.
+ * Each neighbor entry includes the base distance and congestion multiplier.
+ */
+function buildWeightedAdj(
+  validEdges: GraphEdge[],
+  penalties: CongestionPenalties
+): Map<string, Array<{ node: string; weight: number }>> {
+  const adj = new Map<string, Array<{ node: string; weight: number }>>();
   for (const edge of validEdges) {
     if (!adj.has(edge.source)) adj.set(edge.source, []);
     if (!adj.has(edge.target)) adj.set(edge.target, []);
-    adj.get(edge.source)!.push(edge.target);
-    adj.get(edge.target)!.push(edge.source);
+
+    // Apply congestion multiplier to source's edge cost
+    // (based on the target zone — entering a congested zone costs more)
+    const multSrc = getCongestionMultiplier(edge.target, penalties);
+    const multTgt = getCongestionMultiplier(edge.source, penalties);
+
+    adj.get(edge.source)!.push({ node: edge.target, weight: edge.distance * multSrc });
+    adj.get(edge.target)!.push({ node: edge.source, weight: edge.distance * multTgt });
   }
   return adj;
 }
 
 /**
- * BFS to find shortest path from start to ANY of the target nodes.
- * Returns { path, targetId } or null.
+ * BFS to find shortest (congestion-weighted) path from start to ANY exit.
+ * Returns { path, targetId, totalWeight } or null.
  */
 function bfsToAnyExit(
-  _graph: NavigationGraph,
   startId: string,
   exitIds: string[],
-  validEdges: GraphEdge[]
-): { path: string[]; targetId: string } | null {
-  const adj = buildAdj(validEdges);
+  validEdges: GraphEdge[],
+  penalties: CongestionPenalties
+): { path: string[]; targetId: string; totalWeight: number } | null {
+  const adj = buildWeightedAdj(validEdges, penalties);
 
   const visited = new Set<string>();
-  const queue: Array<{ node: string; path: string[] }> = [
-    { node: startId, path: [startId] },
+  const queue: Array<{ node: string; path: string[]; weight: number }> = [
+    { node: startId, path: [startId], weight: 0 },
   ];
   visited.add(startId);
 
   while (queue.length > 0) {
-    const { node, path } = queue.shift()!;
+    // Sort queue by weight (Dijkstra-lite for small graphs)
+    queue.sort((a, b) => a.weight - b.weight);
+    const { node, path, weight } = queue.shift()!;
+
     if (exitIds.includes(node)) {
-      return { path, targetId: node };
+      return { path, targetId: node, totalWeight: weight };
     }
 
     const neighbors = adj.get(node) || [];
     for (const next of neighbors) {
-      if (!visited.has(next)) {
-        visited.add(next);
-        queue.push({ node: next, path: [...path, next] });
+      if (!visited.has(next.node)) {
+        visited.add(next.node);
+        queue.push({
+          node: next.node,
+          path: [...path, next.node],
+          weight: weight + next.weight,
+        });
       }
     }
   }
@@ -141,44 +192,50 @@ function bfsToAnyExit(
 
 /**
  * BFS to find shortest paths from start to ALL reachable exit nodes.
- * Returns paths sorted by length (shortest first).
+ * Returns paths sorted by weighted cost (shortest first).
  */
 function bfsAllExits(
   startId: string,
   exitIds: string[],
-  validEdges: GraphEdge[]
-): Array<{ path: string[]; targetId: string }> {
-  const adj = buildAdj(validEdges);
+  validEdges: GraphEdge[],
+  penalties: CongestionPenalties
+): Array<{ path: string[]; targetId: string; totalWeight: number }> {
+  const adj = buildWeightedAdj(validEdges, penalties);
 
   const visited = new Set<string>();
-  const queue: Array<{ node: string; path: string[] }> = [
-    { node: startId, path: [startId] },
+  const queue: Array<{ node: string; path: string[]; weight: number }> = [
+    { node: startId, path: [startId], weight: 0 },
   ];
   visited.add(startId);
 
-  const exitPaths: Array<{ path: string[]; targetId: string }> = [];
+  const exitPaths: Array<{ path: string[]; targetId: string; totalWeight: number }> = [];
   const foundExits = new Set<string>();
 
   while (queue.length > 0) {
-    const { node, path } = queue.shift()!;
+    queue.sort((a, b) => a.weight - b.weight);
+    const { node, path, weight } = queue.shift()!;
 
     if (exitIds.includes(node) && !foundExits.has(node)) {
-      exitPaths.push({ path, targetId: node });
+      exitPaths.push({ path, targetId: node, totalWeight: weight });
       foundExits.add(node);
     }
 
     // Continue BFS to find paths to other exits
     const neighbors = adj.get(node) || [];
     for (const next of neighbors) {
-      if (!visited.has(next)) {
-        visited.add(next);
-        queue.push({ node: next, path: [...path, next] });
+      if (!visited.has(next.node)) {
+        visited.add(next.node);
+        queue.push({
+          node: next.node,
+          path: [...path, next.node],
+          weight: weight + next.weight,
+        });
       }
     }
   }
 
-  // Sort by path length (shortest first)
-  exitPaths.sort((a, b) => a.path.length - b.path.length);
+  // Sort by weighted cost (shortest first)
+  exitPaths.sort((a, b) => a.totalWeight - b.totalWeight);
   return exitPaths;
 }
 
@@ -199,15 +256,18 @@ function pathUsesRamp(
 function analyzeRoute(
   path: string[],
   graph: NavigationGraph,
-  mobility: MobilityType
+  mobility: MobilityType,
+  penalties: CongestionPenalties
 ): {
   distance: number;
   usesStairs: boolean;
   usesRamp: boolean;
   accessible: boolean;
   risk: string;
+  congestionPenalty: number;
 } {
   let distance = 0;
+  let congestionPenalty = 0;
   let usesStairs = false;
   let usesRamp = false;
 
@@ -227,7 +287,9 @@ function analyzeRoute(
     const key = [path[i], path[i + 1]].sort().join("::");
     const edge = edgeMap.get(key);
     if (edge) {
+      const mult = getCongestionMultiplier(path[i + 1], penalties);
       distance += edge.distance;
+      congestionPenalty += edge.distance * (mult - 1.0); // extra cost from congestion
       if (edge.edgeType === "stairs") usesStairs = true;
     }
     // Detect ramp usage by checking if any node in the path is a ramp element
@@ -237,9 +299,18 @@ function analyzeRoute(
   }
 
   const accessible = mobility === "wheelchair" ? !usesStairs : true;
-  const risk = distance < 50 ? "LOW" : distance < 150 ? "MEDIUM" : "HIGH";
+  const effectiveDistance = distance + congestionPenalty;
+  const risk =
+    effectiveDistance < 50 ? "LOW" : effectiveDistance < 150 ? "MEDIUM" : "HIGH";
 
-  return { distance, usesStairs, usesRamp, accessible, risk };
+  return {
+    distance: Math.round(distance * 10) / 10,
+    usesStairs,
+    usesRamp,
+    accessible,
+    risk,
+    congestionPenalty: Math.round(congestionPenalty * 10) / 10,
+  };
 }
 
 /* ============================================================
@@ -251,7 +322,8 @@ export function calculateEvacuation(
   occupants: Occupant[],
   fireRoomId: string,
   blockedNodeIds: string[],
-  blockedEdgeKeys: Set<string>
+  blockedEdgeKeys: Set<string>,
+  congestionPenalties: CongestionPenalties = {}
 ): EvacuationPlan {
   // Find exit nodes
   const exitNodes = graph.nodes.filter((n) => n.type === "exit");
@@ -283,6 +355,7 @@ export function calculateEvacuation(
         usesStairs: false,
         usesRamp: false,
         accessibleRoute: false,
+        congestionPenalty: 0,
         status: "no_route",
         message: `No navigation node found at ${occupant.locationId}`,
       });
@@ -303,6 +376,7 @@ export function calculateEvacuation(
         usesStairs: false,
         usesRamp: false,
         accessibleRoute: false,
+        congestionPenalty: 0,
         status: "blocked",
         message: "⚠ Occupant is in the fire zone!",
       });
@@ -316,17 +390,16 @@ export function calculateEvacuation(
     // Remove edges to/from blocked nodes
     validEdges = validEdges.filter(
       (e) =>
-        !blockedNodeIds.includes(e.source) &&
-        !blockedNodeIds.includes(e.target)
+        !blockedNodeIds.includes(e.source) && !blockedNodeIds.includes(e.target)
     );
 
-    let result: { path: string[]; targetId: string } | null = null;
+    let result: { path: string[]; targetId: string; totalWeight: number } | null = null;
 
     if (occupant.mobility === "wheelchair" && rampNodeIds.size > 0) {
       // ====================================================
       // WHEELCHAIR: prefer routes that pass through a ramp
       // ====================================================
-      const allExitPaths = bfsAllExits(startNode.id, exitIds, validEdges);
+      const allExitPaths = bfsAllExits(startNode.id, exitIds, validEdges, congestionPenalties);
 
       if (allExitPaths.length > 0) {
         // Separate into ramp paths and non-ramp paths
@@ -336,7 +409,7 @@ export function calculateEvacuation(
 
         if (rampPaths.length > 0) {
           // Prefer the shortest path that goes through a ramp
-          result = rampPaths[0]; // already sorted by length
+          result = rampPaths[0]; // already sorted by weighted cost
         } else {
           // No ramp path available — use shortest accessible path
           result = allExitPaths[0];
@@ -346,7 +419,7 @@ export function calculateEvacuation(
       // ====================================================
       // NORMAL / LIMITED MOBILITY: shortest path to any exit
       // ====================================================
-      result = bfsToAnyExit(graph, startNode.id, exitIds, validEdges);
+      result = bfsToAnyExit(startNode.id, exitIds, validEdges, congestionPenalties);
     }
 
     if (!result) {
@@ -362,13 +435,19 @@ export function calculateEvacuation(
         usesStairs: false,
         usesRamp: false,
         accessibleRoute: false,
+        congestionPenalty: 0,
         status: "no_route",
         message: "⚠ No Safe Evacuation Route Available",
       });
       continue;
     }
 
-    const analysis = analyzeRoute(result.path, graph, occupant.mobility);
+    const analysis = analyzeRoute(
+      result.path,
+      graph,
+      occupant.mobility,
+      congestionPenalties
+    );
     const routeCoords = result.path.map((nodeId) => {
       const node = graph.nodes.find((n) => n.id === nodeId)!;
       return { x: node.x, y: node.y };
@@ -386,6 +465,7 @@ export function calculateEvacuation(
       usesStairs: analysis.usesStairs,
       usesRamp: analysis.usesRamp,
       accessibleRoute: analysis.accessible,
+      congestionPenalty: analysis.congestionPenalty,
       status: "waiting",
     });
   }

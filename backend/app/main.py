@@ -560,3 +560,415 @@ async def simulate_evacuation(req: EvacuationRequest):
     )
 
     return result
+
+
+# ==========================================================
+# OCCUPANCY DETECTION (YOLO-World)
+# ==========================================================
+
+# Lazy-loaded occupancy detector (shared with the main detector)
+_occupancy_detector = None
+
+
+def _get_occupancy_detector():
+    global _occupancy_detector
+    if _occupancy_detector is None:
+        from app.ai.occupancy_detector import OccupancyDetector
+        _occupancy_detector = OccupancyDetector(environment_detector=detector)
+    return _occupancy_detector
+
+
+@app.post("/api/v1/occupancy/analyze")
+async def analyze_occupancy(
+    file: UploadFile = File(...),
+    camera_id: str = Form("camera_1"),
+    zone_id: str = Form("zone_default"),
+    zone_name: str = Form("Default Zone"),
+    zone_type: str = Form("corridor"),
+    maximum_capacity: int = Form(20),
+):
+    """Analyze a single frame for occupancy.
+
+    Receives an image from a camera, runs YOLO-World person detection,
+    and updates the zone occupancy state.
+    """
+    occ = _get_occupancy_detector()
+
+    # Auto-register camera if not already mapped
+    if camera_id not in occ._camera_zones:
+        from app.models.occupancy_models import CameraZoneMapping
+        occ.register_camera(CameraZoneMapping(
+            camera_id=camera_id,
+            zone_id=zone_id,
+            zone_name=zone_name,
+            zone_type=zone_type,
+            maximum_capacity=maximum_capacity,
+        ))
+
+    # Read image
+    contents = await file.read()
+    try:
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+        image_np = np.array(image)
+    except Exception as e:
+        return {"success": False, "error": f"Could not decode image: {e}"}
+
+    # Run occupancy detection
+    result = occ.analyze_frame(image_np, camera_id)
+
+    return {
+        "success": True,
+        "camera_id": result.camera_id,
+        "zone_id": result.zone_id,
+        "person_count": result.person_count,
+        "detections": [
+            {"id": d.id, "confidence": d.confidence, "bbox": d.bbox}
+            for d in result.detections
+        ],
+        "occupancy": result.occupancy.model_dump(mode="json") if result.occupancy else None,
+    }
+
+
+@app.get("/api/v1/occupancy/zones")
+async def get_zone_occupancy():
+    """Get current occupancy for all monitored zones."""
+    occ = _get_occupancy_detector()
+    overview = occ.get_building_overview()
+    return {
+        "success": True,
+        "overview": overview.model_dump(mode="json"),
+        "zones": [z.model_dump(mode="json") for z in occ.get_all_zones()],
+    }
+
+
+@app.post("/api/v1/occupancy/camera/register")
+async def register_camera(
+    camera_id: str = Form(...),
+    zone_id: str = Form(...),
+    zone_name: str = Form(...),
+    zone_type: str = Form("corridor"),
+    maximum_capacity: int = Form(20),
+):
+    """Register a camera → zone mapping."""
+    occ = _get_occupancy_detector()
+    from app.models.occupancy_models import CameraZoneMapping
+    occ.register_camera(CameraZoneMapping(
+        camera_id=camera_id,
+        zone_id=zone_id,
+        zone_name=zone_name,
+        zone_type=zone_type,
+        maximum_capacity=maximum_capacity,
+    ))
+    return {
+        "success": True,
+        "message": f"Camera {camera_id} registered to zone {zone_id}",
+        "mappings": occ.get_camera_mappings(),
+    }
+
+
+@app.get("/api/v1/occupancy/cameras")
+async def get_camera_mappings():
+    """Get all registered camera → zone mappings."""
+    occ = _get_occupancy_detector()
+    return {
+        "success": True,
+        "mappings": occ.get_camera_mappings(),
+    }
+
+
+@app.get("/api/v1/occupancy/congestion")
+async def get_congestion_penalties():
+    """Get congestion penalties for routing integration."""
+    occ = _get_occupancy_detector()
+    return {
+        "success": True,
+        "penalties": occ.get_congestion_penalties(),
+        "overview": occ.get_building_overview().model_dump(mode="json"),
+    }
+
+
+@app.post("/api/v1/occupancy/zone/{zone_id}/capacity")
+async def set_zone_capacity(zone_id: str, capacity: int = Form(...)):
+    """Update the maximum capacity for a zone."""
+    occ = _get_occupancy_detector()
+    occ.set_zone_capacity(zone_id, capacity)
+    zone = occ.get_zone_occupancy(zone_id)
+    if zone is None:
+        return {"success": False, "error": f"Zone {zone_id} not found"}
+    return {
+        "success": True,
+        "zone": zone.model_dump(mode="json"),
+    }
+
+
+@app.post("/api/v1/occupancy/zone/{zone_id}/count")
+async def set_zone_count(zone_id: str, count: int = Form(...)):
+    """Manually set the people count for a zone."""
+    occ = _get_occupancy_detector()
+    occ.manually_set_count(zone_id, count)
+    zone = occ.get_zone_occupancy(zone_id)
+    if zone is None:
+        return {"success": False, "error": f"Zone {zone_id} not found"}
+    return {
+        "success": True,
+        "zone": zone.model_dump(mode="json"),
+    }
+
+
+@app.post("/api/v1/simulation/evacuate-with-occupancy")
+async def simulate_evacuation_with_occupancy(req: EvacuationRequest):
+    """Run evacuation simulation with live congestion penalties.
+
+    Same as /api/v1/simulation/evacuate but also applies
+    real-time congestion multipliers from YOLO occupancy data.
+    """
+    from app.simulation.evacuation import (
+        build_navigation_graph, apply_hazard,
+        apply_mobility_constraints, calculate_route_for_occupant,
+    )
+    import networkx as nx
+
+    elements = req.floor_plan.get("elements", [])
+
+    # Build navigation graph
+    graph = build_navigation_graph(elements)
+
+    # Apply fire hazard
+    apply_hazard(graph, req.fire_room_id)
+
+    # Apply congestion penalties from live occupancy
+    occ = _get_occupancy_detector()
+    penalties = occ.get_congestion_penalties()
+    for node_id, data in graph.nodes(data=True):
+        zone_id = data.get("zone_id", node_id)
+        mult = penalties.get(zone_id, 1.0)
+        if mult > 1.0:
+            # Increase hazard proportionally to congestion
+            current_hazard = data.get("hazard", 0)
+            data["hazard"] = current_hazard + (mult - 1.0) * 100
+
+    # Route each occupant
+    evacuations = []
+    for occ_item in req.occupants:
+        location = occ_item.get("location_id", "")
+        mobility = occ_item.get("mobility", "normal")
+        result = calculate_route_for_occupant(graph, location, mobility)
+        result["occupant_id"] = occ_item.get("id", "unknown")
+        result["occupant_name"] = occ_item.get("name", occ_item.get("id", "unknown"))
+        result["location_id"] = location
+        evacuations.append(result)
+
+    return {
+        "success": True,
+        "hazard": {
+            "type": "fire",
+            "room_id": req.fire_room_id,
+        },
+        "congestion_penalties": penalties,
+        "graph": {
+            "nodes": [{"id": n, **d} for n, d in graph.nodes(data=True)],
+            "edges": [{"source": u, "target": v, **d} for u, v, d in graph.edges(data=True)],
+        },
+        "evacuations": evacuations,
+    }
+
+
+# ==========================================================
+# SENSOR STORE — CENTRALIZED STATE
+# ==========================================================
+
+from app.sensor_store import get_store
+
+
+@app.post("/api/v1/building/register")
+async def register_building(
+    building_id: str = Form("building_001"),
+    floor_plan: Optional[str] = Form(None),
+):
+    """Register a building in the sensor store with its floor plan.
+
+    After floor plan upload or photo reconstruction, call this to
+    initialize the building state so occupancy monitoring can begin.
+    """
+    import json
+
+    store = get_store()
+    elements = []
+    width = 1000.0
+    height = 600.0
+
+    if floor_plan:
+        try:
+            fp_data = json.loads(floor_plan)
+            elements = fp_data.get("elements", [])
+            width = fp_data.get("width", 1000)
+            height = fp_data.get("height", 600)
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+    state = store.register_building(
+        building_id=building_id,
+        floor_plan_elements=elements,
+        floor_plan_width=width,
+        floor_plan_height=height,
+    )
+
+    # Auto-generate zones from floor plan elements
+    zones = store.auto_generate_zones(building_id)
+
+    return {
+        "success": True,
+        "building_id": building_id,
+        "zones_generated": len(zones),
+        "zones": [z.model_dump(mode="json") for z in zones],
+        "elements": len(state.floor_plan_elements),
+    }
+
+
+@app.get("/api/v1/building/{building_id}/state")
+async def get_building_state(building_id: str):
+    """Get full building state including zones, hazards, and overview."""
+    store = get_store()
+    state = store.get_building(building_id)
+    if state is None:
+        return {"success": False, "error": f"Building '{building_id}' not found"}
+
+    overview = store.get_building_overview(building_id)
+    return {
+        "success": True,
+        "building_id": building_id,
+        "zones": [z.model_dump(mode="json") for z in store.get_all_zones(building_id)],
+        "overview": overview.model_dump(mode="json"),
+        "hazards": store.get_hazards(building_id),
+        "penalties": store.get_congestion_penalties(building_id),
+        "bottleneck_zones": store.get_bottleneck_zones(building_id),
+        "floor_plan_elements": len(state.floor_plan_elements),
+    }
+
+
+@app.post("/api/v1/occupancy/update")
+async def occupancy_update(
+    file: UploadFile = File(...),
+    building_id: str = Form("building_001"),
+    zone_id: str = Form(...),
+):
+    """Unified occupancy update pipeline.
+
+    This is the SINGLE endpoint that both uploaded images and future
+    CCTV frames use. The pipeline:
+
+        Image → YOLO-World → Person Count → Zone Update → Bottleneck Detection → Routing Update
+
+    For the prototype: uploaded crowd photo
+    For production: CCTV camera frame
+    Same pipeline, same response format.
+    """
+    from app.ai.occupancy_service import update_zone_occupancy
+
+    # Read image
+    contents = await file.read()
+    try:
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+        image_np = np.array(image)
+    except Exception as e:
+        return {"success": False, "error": f"Could not decode image: {e}"}
+
+    # Run the unified pipeline
+    result = update_zone_occupancy(
+        building_id=building_id,
+        zone_id=zone_id,
+        image_np=image_np,
+        occupancy_detector=_get_occupancy_detector(),
+    )
+
+    return result
+
+
+@app.post("/api/v1/occupancy/zones/auto-generate")
+async def auto_generate_zones(
+    building_id: str = Form("building_001"),
+    floor_plan: str = Form(...),
+):
+    """Auto-generate monitored zones from floor plan elements.
+
+    Call this after building creation to create zones for each
+    navigable element (exits, corridors, stairs, ramps, elevators).
+    """
+    from app.ai.occupancy_service import auto_generate_zones_from_floor_plan
+    import json
+
+    try:
+        fp_data = json.loads(floor_plan)
+    except (json.JSONDecodeError, AttributeError):
+        return {"success": False, "error": "Invalid floor_plan JSON"}
+
+    elements = fp_data.get("elements", [])
+    width = fp_data.get("width", 1000)
+    height = fp_data.get("height", 600)
+
+    result = auto_generate_zones_from_floor_plan(
+        building_id=building_id,
+        floor_plan_elements=elements,
+        floor_plan_width=width,
+        floor_plan_height=height,
+    )
+
+    return result
+
+
+@app.post("/api/v1/building/{building_id}/evacuate-with-occupancy")
+async def evacuate_with_building_occupancy(
+    building_id: str,
+    req: EvacuationRequest,
+):
+    """Run evacuation using the sensor store's building state.
+
+    This applies both fire hazards AND live congestion penalties
+    from the sensor store to the routing graph.
+    """
+    from app.simulation.evacuation import (
+        build_navigation_graph, apply_hazard,
+        calculate_route_for_occupant,
+    )
+    from app.graph.routing import apply_congestion_penalties, apply_hazard_penalties
+
+    store = get_store()
+    penalties = store.get_congestion_penalties(building_id)
+    hazards = store.get_hazards(building_id)
+
+    elements = req.floor_plan.get("elements", [])
+    graph = build_navigation_graph(elements)
+
+    # Apply fire hazard if specified
+    if req.fire_room_id:
+        apply_hazard(graph, req.fire_room_id)
+
+    # Apply congestion penalties from sensor store
+    apply_congestion_penalties(graph, penalties)
+
+    # Apply hazard penalties from sensor store
+    apply_hazard_penalties(graph, hazards)
+
+    # Route each occupant
+    evacuations = []
+    for occ_item in req.occupants:
+        location = occ_item.get("location_id", "")
+        mobility = occ_item.get("mobility", "normal")
+        route_result = calculate_route_for_occupant(graph, location, mobility)
+        route_result["occupant_id"] = occ_item.get("id", "unknown")
+        route_result["occupant_name"] = occ_item.get("name", occ_item.get("id", "unknown"))
+        route_result["location_id"] = location
+        evacuations.append(route_result)
+
+    return {
+        "success": True,
+        "building_id": building_id,
+        "hazard": {
+            "type": "fire",
+            "room_id": req.fire_room_id,
+        },
+        "congestion_penalties": penalties,
+        "bottleneck_zones": store.get_bottleneck_zones(building_id),
+        "hazard_zones": list(hazards.keys()),
+        "evacuations": evacuations,
+    }

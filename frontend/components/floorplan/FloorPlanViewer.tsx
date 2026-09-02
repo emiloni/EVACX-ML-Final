@@ -58,6 +58,25 @@ export interface OccupantOverlay {
   status: "waiting" | "evacuating" | "evacuated" | "blocked" | "no_route";
 }
 
+/* ---- Congestion overlay ---- */
+export interface CongestionOverlay {
+  zoneId: string;
+  zoneName: string;
+  status: string; // NORMAL | HIGH_OCCUPANCY | CONGESTED | BOTTLENECK
+  people: number;
+  capacity: number;
+  percentage: number;
+}
+
+/* ---- Exit status overlay ---- */
+export interface ExitStatusOverlay {
+  exitId: string;
+  exitName: string;
+  availability: string; // RECOMMENDED | AVAILABLE | AVOID | BLOCKED
+  reason: string;
+  congestionStatus: string;
+}
+
 interface FloorPlanViewerProps {
   floorPlan: FloorPlanData;
   onChange?: (plan: FloorPlanData) => void;
@@ -71,6 +90,10 @@ interface FloorPlanViewerProps {
   occupants?: OccupantOverlay[];
   /** When true, editing tools are locked */
   simulationMode?: boolean;
+  /** Zones with congestion to highlight on the floor plan */
+  congestionOverlays?: CongestionOverlay[];
+  /** Exit availability status overlays */
+  exitStatuses?: ExitStatusOverlay[];
 }
 
 /* ============================================================
@@ -111,6 +134,8 @@ export default function FloorPlanViewer({
   routes = [],
   occupants = [],
   simulationMode = false,
+  congestionOverlays = [],
+  exitStatuses = [],
 }: FloorPlanViewerProps) {
   // --- View state ---
   const [zoom, setZoom] = useState(1);
@@ -143,6 +168,7 @@ export default function FloorPlanViewer({
   // --- Local draft ---
   const [draft, setDraft] = useState<FloorPlanData>(floorPlan);
   const [unsaved, setUnsaved] = useState(false);
+  const userEditRef = useRef(false); // tracks whether draft was changed by user edits vs prop sync
 
   // --- Validation ---
   const [validationIssues, setValidationIssues] = useState<string[]>([]);
@@ -151,6 +177,7 @@ export default function FloorPlanViewer({
 
   // Sync draft when floorPlan prop changes
   useEffect(() => {
+    userEditRef.current = false; // suppress onChange during prop sync
     setDraft(floorPlan);
     setHistory([]);
     setHistoryIndex(-1);
@@ -158,6 +185,14 @@ export default function FloorPlanViewer({
     setSelectedId(null);
     setValidationIssues([]);
   }, [floorPlan]);
+
+  // Notify parent when the user edits the draft (drag, add, delete, undo, redo)
+  useEffect(() => {
+    if (userEditRef.current && onChange) {
+      onChange(draft);
+    }
+    userEditRef.current = false;
+  }, [draft, onChange]);
 
   // Lock editing when simulation mode is active
   const effectiveEditMode = simulationMode ? false : editMode;
@@ -194,6 +229,7 @@ export default function FloorPlanViewer({
   const undo = useCallback(() => {
     if (historyIndex < 0) return;
     const op = history[historyIndex];
+    userEditRef.current = true;
     setDraft((prev) => {
       const elements = [...prev.elements];
       if (op.type === "delete" && op.before) {
@@ -214,6 +250,7 @@ export default function FloorPlanViewer({
   const redo = useCallback(() => {
     if (historyIndex >= history.length - 1) return;
     const op = history[historyIndex + 1];
+    userEditRef.current = true;
     setDraft((prev) => {
       const elements = [...prev.elements];
       if (op.type === "add" && op.after) {
@@ -252,6 +289,7 @@ export default function FloorPlanViewer({
 
   // --- Element operations ---
   const updateElement = useCallback((id: string, changes: Partial<FloorElement>) => {
+    userEditRef.current = true;
     setDraft((prev) => ({
       ...prev,
       elements: prev.elements.map((e) => e.id === id ? { ...e, ...changes } : e),
@@ -263,6 +301,7 @@ export default function FloorPlanViewer({
     const el = draft.elements.find((e) => e.id === id);
     if (!el) return;
     pushHistory({ type: "delete", elementId: id, before: el, after: null });
+    userEditRef.current = true;
     setDraft((prev) => ({
       ...prev,
       elements: prev.elements.filter((e) => e.id !== id),
@@ -285,6 +324,7 @@ export default function FloorPlanViewer({
       source: "user_added",
     };
     pushHistory({ type: "add", elementId: id, before: null, after: newEl });
+    userEditRef.current = true;
     setDraft((prev) => ({ ...prev, elements: [...prev.elements, newEl] }));
     setAddType(null);
     setSelectedId(id);
@@ -611,6 +651,79 @@ export default function FloorPlanViewer({
             );
           })()}
 
+          {/* Layer 5b: Congestion zone highlights */}
+          {congestionOverlays.map((co) => {
+            const el = draft.elements.find((e) => e.id === co.zoneId);
+            if (!el) return null;
+            const x = pad + el.x * zoom;
+            const y = pad + el.y * zoom;
+            const w = Math.max(el.width * zoom, 2);
+            const h = Math.max(el.height * zoom, 2);
+            const colors: Record<string, { fill: string; stroke: string; label: string }> = {
+              BOTTLENECK: { fill: "rgba(239,68,68,0.15)", stroke: "#ef4444", label: "🔴" },
+              CONGESTED: { fill: "rgba(249,115,22,0.12)", stroke: "#f97316", label: "🟠" },
+              HIGH_OCCUPANCY: { fill: "rgba(245,158,11,0.10)", stroke: "#f59e0b", label: "🟡" },
+            };
+            const c = colors[co.status];
+            if (!c) return null;
+            return (
+              <g key={`cong-${co.zoneId}`}>
+                <rect
+                  x={x - 2} y={y - 2} width={w + 4} height={h + 4}
+                  rx={4} fill={c.fill} stroke={c.stroke} strokeWidth={2}
+                  strokeDasharray="6,3"
+                  style={{ animation: "pulse-congestion 2.5s ease-in-out infinite" }}
+                />
+                {/* Congestion label */}
+                {w > 40 && (
+                  <text x={x + w / 2} y={y - 6} textAnchor="middle"
+                    fontSize={9} fontWeight={700} fill={c.stroke}
+                    fontFamily="system-ui" className="select-none pointer-events-none">
+                    {c.label} {co.status} ({co.people}/{co.capacity})
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Layer 5c: Exit status indicators */}
+          {exitStatuses.map((es) => {
+            const el = draft.elements.find((e) => e.id === es.exitId);
+            if (!el) return null;
+            const x = pad + el.x * zoom;
+            const y = pad + el.y * zoom;
+            const w = Math.max(el.width * zoom, 2);
+            const h = Math.max(el.height * zoom, 2);
+            const statusColors: Record<string, { bg: string; border: string; icon: string; text: string }> = {
+              RECOMMENDED: { bg: "rgba(16,185,129,0.20)", border: "#10b981", icon: "🟢", text: "RECOMMENDED" },
+              AVAILABLE: { bg: "rgba(20,184,166,0.10)", border: "#14b8a6", icon: "✅", text: "AVAILABLE" },
+              AVOID: { bg: "rgba(239,68,68,0.15)", border: "#ef4444", icon: "🔴", text: "AVOID" },
+              BLOCKED: { bg: "rgba(107,114,128,0.20)", border: "#6b7280", icon: "🚫", text: "BLOCKED" },
+            };
+            const sc = statusColors[es.availability];
+            if (!sc) return null;
+            return (
+              <g key={`exit-${es.exitId}`}>
+                <rect
+                  x={x - 2} y={y - 2} width={w + 4} height={h + 4}
+                  rx={4} fill={sc.bg} stroke={sc.border} strokeWidth={2.5}
+                />
+                {/* Exit status label above */}
+                <text x={x + w / 2} y={y - 8} textAnchor="middle"
+                  fontSize={9} fontWeight={700} fill={sc.border}
+                  fontFamily="system-ui" className="select-none pointer-events-none">
+                  {sc.icon} {sc.text}
+                </text>
+                {/* Reason below */}
+                <text x={x + w / 2} y={y + h + 12} textAnchor="middle"
+                  fontSize={7} fill={sc.border} opacity={0.8}
+                  fontFamily="system-ui" className="select-none pointer-events-none">
+                  {es.reason.length > 30 ? es.reason.substring(0, 30) + "..." : es.reason}
+                </text>
+              </g>
+            );
+          })}
+
           {/* Layer 6: Evacuation routes */}
           {routes.map((route) => {
             if (route.points.length < 2) return null;
@@ -708,6 +821,10 @@ export default function FloorPlanViewer({
             0%, 100% { opacity: 0.3; }
             50% { opacity: 0.7; }
           }
+          @keyframes pulse-congestion {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+          }
         `}</style>
 
         {/* Legend */}
@@ -736,6 +853,30 @@ export default function FloorPlanViewer({
                 <span className="h-2 w-2 rounded-full bg-teal-500" />
                 <span className="text-slate-500">Occupant</span>
               </div>
+            )}
+            {congestionOverlays.length > 0 && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-3 rounded-sm bg-red-100" style={{ border: "1px dashed #ef4444" }} />
+                  <span className="text-red-600">Bottleneck</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-3 rounded-sm bg-orange-100" style={{ border: "1px dashed #f97316" }} />
+                  <span className="text-orange-600">Congested</span>
+                </div>
+              </>
+            )}
+            {exitStatuses.length > 0 && (
+              <>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-3 rounded-sm bg-green-100" style={{ border: "1.5px solid #10b981" }} />
+                  <span className="text-green-600">Recommended Exit</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-3 rounded-sm bg-red-100" style={{ border: "1.5px solid #ef4444" }} />
+                  <span className="text-red-600">Avoid Exit</span>
+                </div>
+              </>
             )}
           </div>
         </div>
