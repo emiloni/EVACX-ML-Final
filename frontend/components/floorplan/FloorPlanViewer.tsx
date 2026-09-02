@@ -56,13 +56,13 @@ const SNAP_THRESHOLD = 15;
 const HISTORY_LIMIT = 50;
 
 const COLORS: Record<string, { fill: string; stroke: string; text: string }> = {
-  corridor: { fill: "#334155", stroke: "#64748b", text: "#94a3b8" },
-  door: { fill: "#2563eb", stroke: "#3b82f6", text: "#93c5fd" },
-  room: { fill: "#3b0764", stroke: "#7c3aed", text: "#c4b5fd" },
-  stairs: { fill: "#854d0e", stroke: "#eab308", text: "#fde047" },
-  ramp: { fill: "#065f46", stroke: "#10b981", text: "#6ee7b7" },
-  elevator: { fill: "#065f46", stroke: "#10b981", text: "#6ee7b7" },
-  exit: { fill: "#991b1b", stroke: "#ef4444", text: "#fca5a5" },
+  corridor: { fill: "#f1f5f9", stroke: "#94a3b8", text: "#475569" },
+  door:     { fill: "#f0fdfa", stroke: "#14b8a6", text: "#0d9488" },
+  room:     { fill: "#ffffff", stroke: "#e2e8f0", text: "#475569" },
+  stairs:   { fill: "#fef9c3", stroke: "#eab308", text: "#a16207" },
+  ramp:     { fill: "#ccfbf1", stroke: "#10b981", text: "#065f46" },
+  elevator: { fill: "#ccfbf1", stroke: "#10b981", text: "#065f46" },
+  exit:     { fill: "#fee2e2", stroke: "#ef4444", text: "#991b1b" },
 };
 
 const LABELS: Record<string, string> = {
@@ -405,12 +405,12 @@ export default function FloorPlanViewer({
   });
 
   return (
-    <div className={`rounded-2xl border border-white/10 bg-[#0b1829] overflow-hidden ${className}`}>
+    <div className={`rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm ${className}`}>
       {/* ── Toolbar ── */}
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-2 flex-wrap gap-2">
+      <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 flex-wrap gap-2">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-semibold">2D Floor Plan</h3>
-          {unsaved && <span className="text-[10px] text-yellow-400">● Unsaved changes</span>}
+          <h3 className="text-sm font-semibold text-slate-800">2D Floor Plan</h3>
+          {unsaved && <span className="text-[10px] text-amber-500">● Unsaved changes</span>}
         </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -418,57 +418,57 @@ export default function FloorPlanViewer({
           <button
             onClick={() => { setEditMode(false); setSelectedId(null); setAddType(null); }}
             className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
-              !editMode ? "bg-white/15 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"
+              !editMode ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"
             }`}
           >View</button>
           <button
             onClick={() => setEditMode(true)}
             className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
-              editMode ? "bg-purple-500/30 text-purple-300" : "bg-white/5 text-slate-400 hover:bg-white/10"
+              editMode ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"
             }`}
           >Edit</button>
 
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-slate-200 mx-1" />
 
           {/* Undo/Redo */}
           <button onClick={undo} disabled={historyIndex < 0}
-            className="rounded-md bg-white/5 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-30"
+            className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200 disabled:opacity-30"
             title="Undo (Ctrl+Z)">↩</button>
           <button onClick={redo} disabled={historyIndex >= history.length - 1}
-            className="rounded-md bg-white/5 px-2 py-1 text-[11px] hover:bg-white/10 disabled:opacity-30"
+            className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200 disabled:opacity-30"
             title="Redo (Ctrl+Shift+Z)">↪</button>
 
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-slate-200 mx-1" />
 
           {/* Zoom */}
           <button onClick={() => setZoom((z) => Math.min(z + 0.2, 4))}
-            className="rounded-md bg-white/5 px-2 py-1 text-[11px] hover:bg-white/10">+</button>
+            className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200">+</button>
           <button onClick={() => setZoom((z) => Math.max(z - 0.2, 0.2))}
-            className="rounded-md bg-white/5 px-2 py-1 text-[11px] hover:bg-white/10">−</button>
+            className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200">−</button>
           <button onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
-            className="rounded-md bg-white/5 px-2 py-1 text-[11px] hover:bg-white/10">Fit</button>
-          <span className="text-[10px] text-slate-500 w-8 text-right">{Math.round(zoom * 100)}%</span>
+            className="rounded-md bg-slate-100 px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-200">Fit</button>
+          <span className="text-[10px] text-slate-400 w-8 text-right">{Math.round(zoom * 100)}%</span>
 
           {editMode && (
             <>
-              <div className="w-px h-4 bg-white/10 mx-1" />
+              <div className="w-px h-4 bg-slate-200 mx-1" />
               <button onClick={() => setShowGrid((g) => !g)}
-                className={`rounded-md px-2 py-1 text-[11px] ${showGrid ? "bg-white/15 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"}`}>
+                className={`rounded-md px-2 py-1 text-[11px] ${showGrid ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"}`}>
                 Grid
               </button>
               <button onClick={() => setSnapToGrid((s) => !s)}
-                className={`rounded-md px-2 py-1 text-[11px] ${snapToGrid ? "bg-white/15 text-white" : "bg-white/5 text-slate-400 hover:bg-white/10"}`}>
+                className={`rounded-md px-2 py-1 text-[11px] ${snapToGrid ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-50 border border-transparent"}`}>
                 Snap
               </button>
             </>
           )}
 
-          <div className="w-px h-4 bg-white/10 mx-1" />
+          <div className="w-px h-4 bg-slate-200 mx-1" />
 
           <button onClick={validate}
-            className="rounded-md bg-white/5 px-2.5 py-1 text-[11px] hover:bg-white/10">Validate</button>
+            className="rounded-md bg-slate-100 px-2.5 py-1 text-[11px] text-slate-600 hover:bg-slate-200">Validate</button>
           <button onClick={handleSave} disabled={!unsaved || validationIssues.length > 0}
-            className="rounded-md bg-emerald-500/20 px-2.5 py-1 text-[11px] text-emerald-300 hover:bg-emerald-500/30 disabled:opacity-40">
+            className="rounded-md bg-teal-600 px-2.5 py-1 text-[11px] text-white hover:bg-teal-700 disabled:opacity-40">
             Save
           </button>
         </div>
@@ -476,18 +476,18 @@ export default function FloorPlanViewer({
 
       {/* ── Add toolbar (edit mode only) ── */}
       {editMode && (
-        <div className="flex items-center gap-1.5 border-b border-white/5 px-4 py-1.5">
-          <span className="text-[10px] text-slate-500 mr-1">Add:</span>
+        <div className="flex items-center gap-1.5 border-b border-slate-100 px-4 py-1.5 bg-slate-50">
+          <span className="text-[10px] text-slate-400 mr-1">Add:</span>
           {ADDABLE_TYPES.map((t) => (
             <button key={t} onClick={() => setAddType(addType === t ? null : t)}
               className={`rounded px-2 py-0.5 text-[10px] font-medium transition ${
-                addType === t ? "bg-purple-500/30 text-purple-300" : "bg-white/5 text-slate-400 hover:bg-white/10"
+                addType === t ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-slate-100 text-slate-500 hover:bg-slate-200 border border-transparent"
               }`}>
               + {LABELS[t] || t}
             </button>
           ))}
           {addType && (
-            <span className="text-[10px] text-purple-300 ml-2">Click on floor plan to place {LABELS[addType]}</span>
+            <span className="text-[10px] text-teal-600 ml-2">Click on floor plan to place {LABELS[addType]}</span>
           )}
         </div>
       )}
@@ -495,7 +495,7 @@ export default function FloorPlanViewer({
       {/* ── Canvas ── */}
       <div
         ref={containerRef}
-        className={`relative min-h-[520px] overflow-hidden bg-[#081321] select-none ${
+        className={`relative min-h-[520px] overflow-hidden bg-slate-50 select-none ${
           editMode ? (addType ? "cursor-crosshair" : "cursor-default") : "cursor-grab active:cursor-grabbing"
         }`}
         onWheel={handleWheel}
@@ -512,7 +512,7 @@ export default function FloorPlanViewer({
             <defs>
               <pattern id="grid" width={GRID_SIZE * zoom} height={GRID_SIZE * zoom} patternUnits="userSpaceOnUse">
                 <path d={`M ${GRID_SIZE * zoom} 0 L 0 0 0 ${GRID_SIZE * zoom}`}
-                  fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5" />
+                  fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="0.5" />
               </pattern>
             </defs>
           )}
@@ -522,7 +522,7 @@ export default function FloorPlanViewer({
 
           {/* Elements */}
           {sorted.map((el) => {
-            const c = COLORS[el.type] || { fill: "#374151", stroke: "#6b7280", text: "#9ca3af" };
+            const c = COLORS[el.type] || { fill: "#f1f5f9", stroke: "#94a3b8", text: "#475569" };
             const isLow = el.confidence < 0.4;
             const isSel = selectedId === el.id;
             const isUserAdded = el.source === "user_added";
@@ -537,28 +537,28 @@ export default function FloorPlanViewer({
                   x={x} y={y} width={w} height={h}
                   rx={el.type === "door" ? 1 : 3}
                   fill={c.fill}
-                  stroke={isSel ? "#a78bfa" : isUserAdded ? "#22d3ee" : c.stroke}
+                  stroke={isSel ? "#0d9488" : isUserAdded ? "#0891b2" : c.stroke}
                   strokeWidth={isSel ? 2.5 : 1.5}
                   strokeDasharray={isLow && !isUserAdded ? "4,2" : undefined}
-                  opacity={isLow && !isUserAdded ? 0.6 : 0.85}
+                  opacity={isLow && !isUserAdded ? 0.6 : 1}
                   style={{ cursor: editMode ? "pointer" : "inherit" }}
                 />
                 {w > 35 && h > 14 && (
                   <text x={x + w / 2} y={y + h / 2} textAnchor="middle"
                     dominantBaseline="central" fill={c.text}
-                    fontSize={Math.min(9, w / 6)} fontFamily="system-ui" fontWeight={600} opacity={0.8}>
+                    fontSize={Math.min(9, w / 6)} fontFamily="system-ui" fontWeight={600} opacity={0.9}>
                     {LABELS[el.type] || el.type}
                   </text>
                 )}
-                {isLow && !isUserAdded && <text x={x + w - 6} y={y + 2} fontSize={8} fill="#facc15">⚠</text>}
-                {isUserAdded && <text x={x + 2} y={y + 10} fontSize={7} fill="#22d3ee">+</text>}
+                {isLow && !isUserAdded && <text x={x + w - 6} y={y + 2} fontSize={8} fill="#eab308">⚠</text>}
+                {isUserAdded && <text x={x + 2} y={y + 10} fontSize={7} fill="#0891b2">+</text>}
                 {/* Selection handles */}
                 {isSel && editMode && (
                   <>
-                    <rect x={x - 3} y={y - 3} width={6} height={6} fill="#a78bfa" rx={1} />
-                    <rect x={x + w - 3} y={y - 3} width={6} height={6} fill="#a78bfa" rx={1} />
-                    <rect x={x - 3} y={y + h - 3} width={6} height={6} fill="#a78bfa" rx={1} />
-                    <rect x={x + w - 3} y={y + h - 3} width={6} height={6} fill="#a78bfa" rx={1} />
+                    <rect x={x - 3} y={y - 3} width={6} height={6} fill="#0d9488" rx={1} />
+                    <rect x={x + w - 3} y={y - 3} width={6} height={6} fill="#0d9488" rx={1} />
+                    <rect x={x - 3} y={y + h - 3} width={6} height={6} fill="#0d9488" rx={1} />
+                    <rect x={x + w - 3} y={y + h - 3} width={6} height={6} fill="#0d9488" rx={1} />
                   </>
                 )}
               </g>
@@ -567,12 +567,12 @@ export default function FloorPlanViewer({
         </svg>
 
         {/* Legend */}
-        <div className="absolute bottom-3 left-3 rounded-lg border border-white/10 bg-[#0b1829]/90 p-2.5 backdrop-blur">
+        <div className="absolute bottom-3 left-3 rounded-lg border border-slate-200 bg-white/95 p-2.5 backdrop-blur shadow-sm">
           <div className="space-y-1 text-[9px]">
             {Object.entries(COLORS).map(([type, c]) => (
               <div key={type} className="flex items-center gap-1.5">
                 <span className="h-2 w-3 rounded-sm" style={{ backgroundColor: c.fill, border: `1px solid ${c.stroke}` }} />
-                <span className="text-slate-400">{LABELS[type] || type}</span>
+                <span className="text-slate-500">{LABELS[type] || type}</span>
               </div>
             ))}
           </div>
@@ -583,14 +583,14 @@ export default function FloorPlanViewer({
           const el = draft.elements.find((e) => e.id === selectedId);
           if (!el) return null;
           return (
-            <div className="absolute top-3 right-3 rounded-lg border border-white/10 bg-[#0b1829]/95 p-3 text-xs backdrop-blur min-w-[160px]">
-              <p className="font-semibold text-white">{LABELS[el.type] || el.type}</p>
-              <p className="text-slate-400 mt-1">Confidence: {Math.round(el.confidence * 100)}%</p>
-              <p className="text-slate-500">Position: {Math.round(el.x)}, {Math.round(el.y)}</p>
-              <p className="text-slate-500">Size: {Math.round(el.width)} × {Math.round(el.height)}</p>
-              {el.source && <p className="text-slate-500">Source: {el.source}</p>}
+            <div className="absolute top-3 right-3 rounded-lg border border-slate-200 bg-white p-3 text-xs shadow-sm min-w-[160px]">
+              <p className="font-semibold text-slate-800">{LABELS[el.type] || el.type}</p>
+              <p className="text-slate-500 mt-1">Confidence: {Math.round(el.confidence * 100)}%</p>
+              <p className="text-slate-400">Position: {Math.round(el.x)}, {Math.round(el.y)}</p>
+              <p className="text-slate-400">Size: {Math.round(el.width)} × {Math.round(el.height)}</p>
+              {el.source && <p className="text-slate-400">Source: {el.source}</p>}
               <button onClick={() => deleteElement(el.id)}
-                className="mt-2 w-full rounded bg-red-500/20 px-2 py-1 text-[11px] text-red-300 hover:bg-red-500/30 transition">
+                className="mt-2 w-full rounded bg-red-50 px-2 py-1 text-[11px] text-red-600 hover:bg-red-100 transition">
                 Delete
               </button>
             </div>
@@ -600,8 +600,8 @@ export default function FloorPlanViewer({
 
       {/* ── Validation issues ── */}
       {validationIssues.length > 0 && (
-        <div className="border-t border-white/5 px-4 py-2 text-[11px] text-yellow-200/70">
-          <strong className="text-yellow-300">⚠ {validationIssues.length} issue(s):</strong>
+        <div className="border-t border-slate-200 px-4 py-2 text-[11px] text-amber-700 bg-amber-50">
+          <strong className="text-amber-600">⚠ {validationIssues.length} issue(s):</strong>
           <span className="ml-2">{validationIssues.join(" · ")}</span>
         </div>
       )}

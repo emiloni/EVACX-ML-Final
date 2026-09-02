@@ -208,18 +208,18 @@ export default function ReconstructPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#07111f] text-white">
-      <header className="border-b border-white/10 bg-[#091525]">
+    <main className="min-h-screen bg-slate-50 text-slate-800">
+      <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1500px] items-center justify-between px-8 py-5">
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500 text-xl transition hover:bg-purple-400"
+              className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-600 transition hover:bg-slate-200"
             >
               ←
             </Link>
             <div>
-              <h1 className="text-xl font-bold">
+              <h1 className="text-xl font-bold text-slate-800">
                 Photo-Based Floor Plan
               </h1>
               <p className="text-xs text-slate-400">
@@ -229,8 +229,8 @@ export default function ReconstructPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-purple-400" />
-            <span className="text-sm text-purple-300">
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-teal-500" />
+            <span className="text-sm text-teal-600">
               RECONSTRUCTION MODE
             </span>
           </div>
@@ -239,8 +239,8 @@ export default function ReconstructPage() {
 
       <div className="mx-auto max-w-[1500px] px-8 py-8">
         {/* WARNING */}
-        <div className="mb-6 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 text-xs leading-relaxed text-yellow-200/70">
-          <strong className="text-yellow-300">
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-700">
+          <strong className="text-amber-600">
             ⚠️ AI-Generated Approximation:
           </strong>{" "}
           This floor plan is generated from photos and is an
@@ -249,13 +249,13 @@ export default function ReconstructPage() {
         </div>
 
         {/* STEP 1 */}
-        <section className="mb-6 rounded-2xl border border-white/10 bg-[#0b1829] p-6">
+        <section className="mb-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/20 text-sm font-bold text-purple-300">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 border border-teal-200 text-sm font-bold text-teal-600">
               1
             </div>
             <div>
-              <h2 className="font-semibold">
+              <h2 className="font-semibold text-slate-800">
                 Upload Building Photos
               </h2>
               <p className="text-xs text-slate-400">
@@ -265,7 +265,7 @@ export default function ReconstructPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <label className="cursor-pointer rounded-xl border border-white/10 bg-[#07111f] px-5 py-3 text-sm font-medium transition hover:border-purple-400">
+            <label className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm font-medium text-slate-700 transition hover:border-teal-400 hover:bg-white">
               📷 Add Photos
               <input
                 ref={fileInputRef}
@@ -288,7 +288,7 @@ export default function ReconstructPage() {
               {photos.map((photo, i) => (
                 <div
                   key={i}
-                  className="group relative overflow-hidden rounded-xl border border-white/10 bg-[#07111f]"
+                  className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white"
                 >
                   <div className="aspect-[4/3] overflow-hidden">
                     <img
@@ -297,27 +297,27 @@ export default function ReconstructPage() {
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <div className="absolute left-0 top-0 flex items-center gap-1 rounded-br-lg bg-black/70 px-2 py-1 text-xs font-bold text-white">
+                  <div className="absolute left-0 top-0 flex items-center gap-1 rounded-br-lg bg-teal-600 px-2 py-1 text-xs font-bold text-white">
                     {i + 1}
                   </div>
-                  <div className="absolute right-0 top-0 flex gap-0.5 rounded-bl-lg bg-black/70 p-1 opacity-0 transition group-hover:opacity-100">
+                  <div className="absolute right-0 top-0 flex gap-0.5 rounded-bl-lg bg-white/90 border border-slate-200 p-1 opacity-0 transition group-hover:opacity-100 shadow-sm">
                     <button
                       onClick={() => movePhoto(i, i - 1)}
                       disabled={i === 0}
-                      className="rounded px-1 text-xs text-white hover:bg-white/20 disabled:opacity-30"
+                      className="rounded px-1 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-30"
                     >
                       ←
                     </button>
                     <button
                       onClick={() => movePhoto(i, i + 1)}
                       disabled={i === photos.length - 1}
-                      className="rounded px-1 text-xs text-white hover:bg-white/20 disabled:opacity-30"
+                      className="rounded px-1 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-30"
                     >
                       →
                     </button>
                     <button
                       onClick={() => removePhoto(i)}
-                      className="rounded px-1 text-xs text-red-400 hover:bg-red-500/20"
+                      className="rounded px-1 text-xs text-red-500 hover:bg-red-50"
                     >
                       ✕
                     </button>
@@ -329,12 +329,12 @@ export default function ReconstructPage() {
         </section>
 
         {/* STEP 2 */}
-        <section className="mb-6 rounded-2xl border border-white/10 bg-[#0b1829] p-6">
+        <section className="mb-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/20 text-sm font-bold text-purple-300">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-50 border border-teal-200 text-sm font-bold text-teal-600">
               2
             </div>
-            <h2 className="font-semibold">
+            <h2 className="font-semibold text-slate-800">
               Settings & Reference
             </h2>
           </div>
@@ -346,7 +346,7 @@ export default function ReconstructPage() {
               <select
                 value={refType}
                 onChange={(e) => setRefType(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#07111f] px-4 py-3 text-sm outline-none focus:border-purple-400"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400"
               >
                 <option value="">
                   No reference (relative scale)
@@ -374,7 +374,7 @@ export default function ReconstructPage() {
                 value={refValue}
                 onChange={(e) => setRefValue(e.target.value)}
                 disabled={!refType}
-                className="w-full rounded-xl border border-white/10 bg-[#07111f] px-4 py-3 text-sm outline-none focus:border-purple-400 disabled:opacity-40"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 disabled:opacity-40"
               />
             </div>
             <div>
@@ -386,7 +386,7 @@ export default function ReconstructPage() {
                 onChange={(e) =>
                   setMobility(e.target.value as Mobility)
                 }
-                className="w-full rounded-xl border border-white/10 bg-[#07111f] px-4 py-3 text-sm outline-none focus:border-purple-400"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400"
               >
                 <option value="normal">Normal</option>
                 <option value="wheelchair">
@@ -406,7 +406,7 @@ export default function ReconstructPage() {
           <button
             onClick={processPhotos}
             disabled={photos.length === 0 || processing}
-            className="rounded-xl bg-purple-500 px-8 py-4 text-base font-semibold transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-xl bg-teal-600 px-8 py-4 text-base font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40 shadow-sm"
           >
             {processing
               ? "🤖 Processing Photos..."
@@ -415,7 +415,7 @@ export default function ReconstructPage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
             {error}
           </div>
         )}
@@ -478,34 +478,34 @@ function ResultsPanel({
       )}
 
       {result.metadata?.warning && (
-        <div className="mb-6 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 text-xs text-yellow-200/70">
-          <strong className="text-yellow-300">Note:</strong>{" "}
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-700">
+          <strong className="text-amber-600">Note:</strong>{" "}
           {result.metadata.warning}
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_390px]">
         {/* Floor Plan */}
-        <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#0b1829]">
-          <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
             <div>
-              <h2 className="font-semibold">
+              <h2 className="font-semibold text-slate-800">
                 Generated Floor Plan
               </h2>
               <p className="text-xs text-slate-400">
                 AI-reconstructed approximate layout
               </p>
             </div>
-            <div className="rounded-lg bg-purple-500/10 px-3 py-1.5 text-xs text-purple-300">
+            <div className="rounded-lg bg-teal-50 border border-teal-200 px-3 py-1.5 text-xs text-teal-600">
               APPROXIMATE
             </div>
           </div>
-          <div className="relative min-h-[620px] overflow-hidden bg-[#081321]">
+          <div className="relative min-h-[620px] overflow-hidden bg-slate-50">
             <div
-              className="absolute inset-0 opacity-20"
+              className="absolute inset-0 opacity-30"
               style={{
                 backgroundImage:
-                  "linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px)",
+                  "linear-gradient(rgba(0,0,0,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,.04) 1px, transparent 1px)",
                 backgroundSize: "40px 40px",
               }}
             />
@@ -536,7 +536,7 @@ function ResultsPanel({
                     y1={y1 + "%"}
                     x2={x2 + "%"}
                     y2={y2 + "%"}
-                    stroke="rgba(168,85,247,0.4)"
+                    stroke="rgba(13,148,136,0.35)"
                     strokeWidth="2"
                     strokeDasharray="6,4"
                   />
@@ -548,20 +548,20 @@ function ResultsPanel({
               <NavNode key={node.id} node={node} allNodes={nodes} />
             ))}
 
-            <div className="absolute bottom-5 left-5 rounded-xl border border-white/10 bg-[#0b1829]/90 p-4 backdrop-blur">
+            <div className="absolute bottom-5 left-5 rounded-xl border border-slate-200 bg-white/95 p-4 backdrop-blur shadow-sm">
               <p className="mb-3 text-xs font-semibold text-slate-400">
                 LEGEND
               </p>
               <div className="space-y-2 text-xs">
-                <LegendItem color="bg-slate-500" text="Corridor" />
-                <LegendItem color="bg-blue-400" text="Door" />
-                <LegendItem color="bg-yellow-400" text="Stairs" />
+                <LegendItem color="bg-slate-400" text="Corridor" />
+                <LegendItem color="bg-blue-500" text="Door" />
+                <LegendItem color="bg-amber-400" text="Stairs" />
                 <LegendItem
-                  color="bg-emerald-400"
+                  color="bg-emerald-500"
                   text="Ramp / Elevator"
                 />
-                <LegendItem color="bg-red-400" text="Exit" />
-                <LegendItem color="bg-purple-400" text="Room" />
+                <LegendItem color="bg-red-500" text="Exit" />
+                <LegendItem color="bg-teal-400" text="Room" />
               </div>
             </div>
           </div>
@@ -570,11 +570,11 @@ function ResultsPanel({
         {/* Side Panel */}
         <aside className="space-y-6">
           {result.route && (
-            <section className="rounded-2xl border border-white/10 bg-[#0b1829] p-6">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
                 Recommended Evacuation
               </p>
-              <h2 className="mt-2 text-3xl font-bold">
+              <h2 className="mt-2 text-3xl font-bold text-slate-800">
                 {result.route.recommended_exit || "No route"}
               </h2>
               {result.route.success && (
@@ -584,10 +584,10 @@ function ResultsPanel({
                       key={node + "-" + i}
                       className="flex items-center gap-3"
                     >
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-purple-500/10 text-xs text-purple-300">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-teal-50 border border-teal-200 text-xs text-teal-600">
                         {i + 1}
                       </div>
-                      <span className="text-sm">
+                      <span className="text-sm text-slate-700">
                         {formatNodeId(node)}
                       </span>
                     </div>
@@ -597,21 +597,21 @@ function ResultsPanel({
             </section>
           )}
 
-          <section className="rounded-2xl border border-white/10 bg-[#0b1829] p-6">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
+          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
               Generated Elements
             </p>
             <div className="max-h-[300px] space-y-2 overflow-y-auto">
               {result.floor_plan?.elements.map((el) => (
                 <div
                   key={el.id}
-                  className="flex items-center justify-between rounded-lg bg-[#07111f] px-3 py-2 text-xs"
+                  className="flex items-center justify-between rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-xs"
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 text-slate-700">
                     <span>{typeIcon(el.type)}</span>
                     <span>{el.label || el.id}</span>
                   </span>
-                  <span className="text-slate-500">
+                  <span className="text-slate-400">
                     {el.type}
                   </span>
                 </div>
@@ -619,8 +619,8 @@ function ResultsPanel({
             </div>
           </section>
 
-          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-4 text-xs leading-relaxed text-purple-200/70">
-            <strong className="text-purple-300">
+          <div className="rounded-xl border border-teal-200 bg-teal-50 p-4 text-xs leading-relaxed text-teal-700">
+            <strong className="text-teal-600">
               Next steps:
             </strong>{" "}
             Review the generated elements above. The floor plan is
@@ -649,14 +649,14 @@ function StatCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0b1829] p-5">
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xl">{icon}</span>
-        <span className="text-xs text-slate-500">LIVE</span>
+        <span className="text-xs text-teal-500 font-medium">LIVE</span>
       </div>
       <p className="text-xs text-slate-400">{label}</p>
-      <p className="mt-1 text-2xl font-bold">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{sub}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-800">{value}</p>
+      <p className="mt-1 text-xs text-slate-400">{sub}</p>
     </div>
   );
 }
@@ -667,14 +667,14 @@ function FloorPlanElementView({
   element: FloorPlanElement;
 }) {
   const typeColors: Record<string, string> = {
-    corridor: "bg-slate-700/60 border-slate-500/40",
-    door: "bg-blue-500/30 border-blue-400/50",
-    room: "bg-purple-500/15 border-purple-400/30",
-    stairs: "bg-yellow-500/20 border-yellow-400/40",
-    ramp: "bg-emerald-500/20 border-emerald-400/40",
-    elevator: "bg-emerald-500/20 border-emerald-400/40",
-    exit: "bg-red-500/20 border-red-400/40",
-    entrance: "bg-orange-500/20 border-orange-400/40",
+    corridor: "bg-slate-100 border-slate-300",
+    door: "bg-teal-50 border-teal-300",
+    room: "bg-white border-slate-200",
+    stairs: "bg-amber-50 border-amber-300",
+    ramp: "bg-emerald-50 border-emerald-300",
+    elevator: "bg-emerald-50 border-emerald-300",
+    exit: "bg-red-50 border-red-300",
+    entrance: "bg-orange-50 border-orange-300",
   };
 
   const scale = 30;
@@ -686,7 +686,7 @@ function FloorPlanElementView({
   const h = Math.max(element.height * scale, 8);
   const colorClass =
     typeColors[element.type] ||
-    "bg-slate-600/30 border-slate-400/30";
+    "bg-slate-100 border-slate-300";
 
   return (
     <div
@@ -697,7 +697,7 @@ function FloorPlanElementView({
       title={element.type + ": " + (element.label || element.id)}
     >
       {w > 40 && h > 20 && (
-        <span className="flex h-full items-center justify-center text-[9px] font-medium text-white/60">
+        <span className="flex h-full items-center justify-center text-[9px] font-medium text-slate-500">
           {element.label || element.type}
         </span>
       )}
@@ -737,10 +737,10 @@ function NavNode({
       style={{ left: x + "px", top: y + "px" }}
       title={node.type + ": " + (node.label || node.id)}
     >
-      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-purple-400/60 bg-purple-500/20 text-sm">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-teal-400 bg-white text-sm shadow-sm">
         {iconMap[node.type] || "●"}
       </div>
-      <span className="mt-1 whitespace-nowrap text-[9px] font-semibold text-purple-300/80">
+      <span className="mt-1 whitespace-nowrap text-[9px] font-semibold text-teal-700">
         {shortLabel}
       </span>
     </div>
@@ -757,7 +757,7 @@ function LegendItem({
   return (
     <div className="flex items-center gap-2">
       <span className={"h-2 w-2 rounded-full " + color} />
-      <span className="text-slate-400">{text}</span>
+      <span className="text-slate-500">{text}</span>
     </div>
   );
 }

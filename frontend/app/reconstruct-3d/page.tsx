@@ -253,19 +253,19 @@ export default function Reconstruct3DPage() {
   const selectedEvac = evacList.find((e) => e.occupant_id === selectedOccupant) || null;
 
   return (
-    <main className="min-h-screen bg-[#07111f] text-white">
+    <main className="min-h-screen bg-slate-50 text-slate-800">
       {/* ── HEADER ── */}
-      <header className="border-b border-white/10 bg-[#091525]">
+      <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-sm hover:bg-white/10">←</Link>
+            <Link href="/" className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-sm text-slate-600 hover:bg-slate-200 transition">←</Link>
             <div>
-              <h1 className="text-lg font-bold">EVAC-X Reconstructor</h1>
-              <p className="text-[11px] text-slate-500">Photo-based building reconstruction</p>
+              <h1 className="text-lg font-bold text-slate-800">EVAC-X Reconstructor</h1>
+              <p className="text-[11px] text-slate-400">Photo-based building reconstruction</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="h-2 w-2 rounded-full bg-teal-500" />
             Ready
           </div>
         </div>
@@ -279,17 +279,17 @@ export default function Reconstruct3DPage() {
               <div
                 className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-medium whitespace-nowrap transition ${
                   i < progressStage
-                    ? "bg-emerald-500/15 text-emerald-300"
+                    ? "bg-teal-50 text-teal-700 border border-teal-200"
                     : i === progressStage && processing
-                    ? "bg-purple-500/15 text-purple-300 animate-pulse"
-                    : "bg-white/5 text-slate-500"
+                    ? "bg-teal-50 text-teal-600 animate-pulse border border-teal-200"
+                    : "bg-slate-100 text-slate-400 border border-transparent"
                 }`}
               >
                 {i < progressStage ? "✓" : i === progressStage && processing ? "●" : `${i + 1}`}
                 {step}
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`h-px w-3 ${i < progressStage ? "bg-emerald-500/40" : "bg-white/10"}`} />
+                <div className={`h-px w-3 ${i < progressStage ? "bg-teal-300" : "bg-slate-200"}`} />
               )}
             </div>
           ))}
@@ -298,14 +298,14 @@ export default function Reconstruct3DPage() {
         {/* ══════════════════════════════════════════
             STEP 1 — UPLOAD
             ══════════════════════════════════════════ */}
-        <section className="rounded-2xl border border-white/10 bg-[#0b1829] p-6">
-          <h2 className="mb-2 text-sm font-semibold">Step 1 — Upload Building Views</h2>
-          <p className="mb-4 text-[11px] text-slate-400">
+        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-2 text-sm font-semibold text-slate-800">Step 1 — Upload Building Views</h2>
+          <p className="mb-4 text-[11px] text-slate-500">
             Capture photos while walking through the building. Ensure 40–70% overlap between consecutive views.
           </p>
 
           <div className="flex items-center gap-3">
-            <label className="cursor-pointer rounded-xl border border-white/10 bg-[#07111f] px-5 py-2.5 text-sm font-medium transition hover:border-purple-400">
+            <label className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:border-teal-400 hover:bg-white">
               📷 Upload Images
               <input
                 ref={fileInputRef}
@@ -324,8 +324,8 @@ export default function Reconstruct3DPage() {
           {photos.length > 0 && (
             <div className="mt-3 flex gap-3 items-end">
               <div>
-                <label className="mb-1 block text-[10px] text-slate-500">Reference (optional)</label>
-                <select value={refType} onChange={(e) => setRefType(e.target.value)} className="rounded-lg border border-white/10 bg-[#07111f] px-3 py-1.5 text-xs outline-none">
+                <label className="mb-1 block text-[10px] text-slate-400">Reference (optional)</label>
+                <select value={refType} onChange={(e) => setRefType(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400">
                   <option value="">None</option>
                   <option value="door_width">Door width (m)</option>
                   <option value="corridor_width">Corridor width (m)</option>
@@ -335,7 +335,7 @@ export default function Reconstruct3DPage() {
                 type="number" step="0.01" placeholder="0.9"
                 value={refValue} onChange={(e) => setRefValue(e.target.value)}
                 disabled={!refType}
-                className="w-24 rounded-lg border border-white/10 bg-[#07111f] px-3 py-1.5 text-xs outline-none disabled:opacity-40"
+                className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 disabled:opacity-40"
               />
             </div>
           )}
@@ -345,10 +345,10 @@ export default function Reconstruct3DPage() {
             STEP 2 — IMAGE CAROUSEL
             ══════════════════════════════════════════ */}
         {photos.length > 0 && (
-          <section className="rounded-2xl border border-white/10 bg-[#0b1829] p-6">
+          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold">Step 2 — Building Views</h2>
-              <span className="text-[10px] text-slate-500">{photos.length} Photos</span>
+              <h2 className="text-sm font-semibold text-slate-800">Step 2 — Building Views</h2>
+              <span className="text-[10px] text-slate-400">{photos.length} Photos</span>
             </div>
             <ImageCarousel previews={previews} onRemove={removePhoto} />
           </section>
@@ -358,12 +358,12 @@ export default function Reconstruct3DPage() {
             STEP 3 — ANALYSE
             ══════════════════════════════════════════ */}
         {photos.length >= 2 && !result && (
-          <section className="rounded-2xl border border-white/10 bg-[#0b1829] p-6">
-            <h2 className="mb-4 text-sm font-semibold">Step 3 — Analyse Building</h2>
+          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold text-slate-800">Step 3 — Analyse Building</h2>
             <button
               onClick={processPhotos}
               disabled={processing}
-              className="w-full rounded-xl bg-purple-500 px-6 py-3 text-sm font-semibold transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-xl bg-teal-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {processing
                 ? `Processing... (${STEPS[Math.min(progressStage, STEPS.length - 1)]})`
@@ -373,15 +373,15 @@ export default function Reconstruct3DPage() {
         )}
 
         {error && (
-          <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">{error}</div>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">{error}</div>
         )}
 
         {/* ══════════════════════════════════════════
             STEP 3 (results) — ANALYSIS SUMMARY
             ══════════════════════════════════════════ */}
         {result && result.reconstruction && (
-          <section className="rounded-2xl border border-white/10 bg-[#0b1829] p-6">
-            <h2 className="mb-4 text-sm font-semibold">Step 3 — Analysis Complete</h2>
+          <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-4 text-sm font-semibold text-slate-800">Step 3 — Analysis Complete</h2>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <AnalysisStat label="Photos" value={String(result.reconstruction.photos_received)} />
               <AnalysisStat label="Overlaps" value={String(result.reconstruction.confirmed_overlaps)} />
@@ -395,7 +395,7 @@ export default function Reconstruct3DPage() {
             {result.metadata?.overall_confidence && result.metadata.overall_confidence > 0 && (
               <button
                 onClick={scrollToFloorPlan}
-                className="mt-4 text-xs text-purple-400 hover:text-purple-300 transition"
+                className="mt-4 text-xs text-teal-600 hover:text-teal-700 transition"
               >
                 View Floor Plan ↓
               </button>
@@ -408,9 +408,9 @@ export default function Reconstruct3DPage() {
             ══════════════════════════════════════════ */}
         <div ref={floorPlanRef} id="floor-plan-section">
           {processing && (
-            <section className="rounded-2xl border border-white/10 bg-[#0b1829] p-12 text-center">
-              <div className="text-sm text-slate-400">Reconstructing building geometry...</div>
-              <div className="mt-2 text-[11px] text-slate-500">
+            <section className="rounded-xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+              <div className="text-sm text-slate-500">Reconstructing building geometry...</div>
+              <div className="mt-2 text-[11px] text-slate-400">
                 The 2D floor plan will appear here when analysis is complete.
               </div>
             </section>
@@ -419,37 +419,37 @@ export default function Reconstruct3DPage() {
           {result && result.floor_plan && result.floor_plan.elements.length > 0 && (
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Step 4 — Generated 2D Floor Plan</h2>
-                <span className="text-[10px] text-slate-500">
+                <h2 className="text-sm font-semibold text-slate-800">Step 4 — Generated 2D Floor Plan</h2>
+                <span className="text-[10px] text-slate-400">
                   {result.floor_plan.approximate ? "Estimated Prototype Reconstruction" : "Reconstructed"}
                 </span>
               </div>
               <FloorPlanViewer floorPlan={result.floor_plan} onSave={handleFloorPlanSave} />
               {saveStatus === "saved" && (
-                <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 text-xs text-emerald-300">
+                <div className="rounded-lg bg-teal-50 border border-teal-200 px-4 py-2 text-xs text-teal-700">
                   ✓ Floor plan saved. Navigation graph updated.
                 </div>
               )}
               {saveStatus === "error" && (
-                <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-2 text-xs text-red-300">
+                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2 text-xs text-red-600">
                   ✗ Failed to save. Please try again.
                 </div>
               )}
 
               {/* Landmarks list */}
               {result.detections && result.detections.fused_landmarks.length > 0 && (
-                <div className="rounded-2xl border border-white/10 bg-[#0b1829] p-5">
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
                     Confirmed Landmarks ({result.detections.fused_landmarks.length})
                   </h3>
                   <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                     {result.detections.fused_landmarks.map((lm) => (
-                      <div key={lm.id} className="flex items-center justify-between rounded-lg bg-[#07111f] px-3 py-2 text-[11px]">
-                        <span className="flex items-center gap-1.5">
+                      <div key={lm.id} className="flex items-center justify-between rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-[11px]">
+                        <span className="flex items-center gap-1.5 text-slate-700">
                           <span>{typeIcon(lm.type)}</span>
                           <span>{lm.type}</span>
                         </span>
-                        <span className="text-slate-500">
+                        <span className="text-slate-400">
                           ×{lm.observation_count} · {Math.round(lm.confidence * 100)}%
                         </span>
                       </div>
@@ -460,8 +460,8 @@ export default function Reconstruct3DPage() {
 
               {/* Validation */}
               {result.validation && !result.validation.geometry_valid && (
-                <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4 text-xs text-yellow-200/70">
-                  <strong className="text-yellow-300">⚠️ Validation Issues:</strong>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-700">
+                  <strong className="text-amber-600">⚠️ Validation Issues:</strong>
                   <ul className="mt-2 list-disc pl-5 space-y-1">
                     {result.validation.issues.map((issue, i) => (
                       <li key={i}>{issue}</li>
@@ -472,179 +472,179 @@ export default function Reconstruct3DPage() {
             </section>
           )}
 
-            {/* ── EVACUATION SIMULATION ── */}
-            {result?.floor_plan && result.floor_plan.elements.length > 0 && (
-              <section className="rounded-2xl border border-white/10 bg-[#0b1829] p-5 space-y-4">
-                <h2 className="text-sm font-semibold">Step 5 — Emergency Evacuation Simulation</h2>
+          {/* ── EVACUATION SIMULATION ── */}
+          {result?.floor_plan && result.floor_plan.elements.length > 0 && (
+            <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-slate-800">Step 5 — Emergency Evacuation Simulation</h2>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  {/* Fire input */}
-                  <div className="space-y-2">
-                    <label className="text-[11px] text-slate-400 uppercase tracking-wider">Hazard Type</label>
-                    <div className="rounded-lg bg-[#07111f] px-3 py-2 text-xs text-orange-300 border border-orange-500/20">
-                      🔥 Fire
-                    </div>
-                    <label className="text-[11px] text-slate-400 uppercase tracking-wider">Fire Location</label>
-                    <select
-                      value={fireRoom}
-                      onChange={(e) => setFireRoom(e.target.value)}
-                      className="w-full rounded-lg bg-[#07111f] border border-white/10 px-3 py-2 text-xs text-white outline-none focus:border-orange-500/40"
-                    >
-                      <option value="">Select room...</option>
-                      {rooms.map((r) => (
-                        <option key={r.id} value={r.id}>{r.id} ({r.type})</option>
-                      ))}
-                      {corridors.map((c) => (
-                        <option key={c.id} value={c.id}>{c.id} (corridor)</option>
-                      ))}
-                    </select>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Fire input */}
+                <div className="space-y-2">
+                  <label className="text-[11px] text-slate-400 uppercase tracking-wider">Hazard Type</label>
+                  <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-600">
+                    🔥 Fire
                   </div>
-
-                  {/* Occupants */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] text-slate-400 uppercase tracking-wider">Occupants</label>
-                      <button onClick={addOccupant}
-                        className="rounded bg-white/5 px-2 py-0.5 text-[10px] text-slate-400 hover:bg-white/10 transition">
-                        + Add Person
-                      </button>
-                    </div>
-                    {occupants.length === 0 && (
-                      <p className="text-[10px] text-slate-500">No occupants added yet.</p>
-                    )}
-                    {occupants.map((occ, idx) => (
-                      <div key={occ.id} className="rounded-lg bg-[#07111f] border border-white/5 p-2 space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <input
-                            value={occ.name}
-                            onChange={(e) => {
-                              const next = [...occupants];
-                              next[idx] = { ...next[idx], name: e.target.value };
-                              setOccupants(next);
-                            }}
-                            className="bg-transparent text-xs text-white outline-none w-24"
-                          />
-                          <button onClick={() => setOccupants((p) => p.filter((_, i) => i !== idx))}
-                            className="text-[10px] text-red-400 hover:text-red-300">✕</button>
-                        </div>
-                        <select
-                          value={occ.location_id}
-                          onChange={(e) => {
-                            const next = [...occupants];
-                            next[idx] = { ...next[idx], location_id: e.target.value };
-                            setOccupants(next);
-                          }}
-                          className="w-full rounded bg-white/5 px-2 py-1 text-[10px] text-white outline-none"
-                        >
-                          {allLocations.map((l) => (
-                            <option key={l.id} value={l.id}>{l.id}</option>
-                          ))}
-                        </select>
-                        <div className="flex gap-2">
-                          {["normal", "wheelchair", "limited_mobility"].map((m) => (
-                            <label key={m} className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer">
-                              <input type="radio" name={`mobility-${occ.id}`} checked={occ.mobility === m}
-                                onChange={() => {
-                                  const next = [...occupants];
-                                  next[idx] = { ...next[idx], mobility: m };
-                                  setOccupants(next);
-                                }}
-                                className="accent-purple-500"
-                              />
-                              {m === "wheelchair" ? "♿ Wheelchair" : m === "limited_mobility" ? "🚶 Limited" : "✓ Normal"}
-                            </label>
-                          ))}
-                        </div>
-                      </div>
+                  <label className="text-[11px] text-slate-400 uppercase tracking-wider">Fire Location</label>
+                  <select
+                    value={fireRoom}
+                    onChange={(e) => setFireRoom(e.target.value)}
+                    className="w-full rounded-lg bg-white border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-red-400 focus:ring-1 focus:ring-red-400"
+                  >
+                    <option value="">Select room...</option>
+                    {rooms.map((r) => (
+                      <option key={r.id} value={r.id}>{r.id} ({r.type})</option>
                     ))}
-                  </div>
+                    {corridors.map((c) => (
+                      <option key={c.id} value={c.id}>{c.id} (corridor)</option>
+                    ))}
+                  </select>
                 </div>
 
-                <button
-                  onClick={runEvacuation}
-                  disabled={!fireRoom || occupants.length === 0 || evacLoading}
-                  className="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 px-5 py-2 text-xs font-semibold text-white shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 transition disabled:opacity-40"
-                >
-                  {evacLoading ? "Calculating routes..." : "🔥 Calculate Evacuation Routes"}
-                </button>
-
-                {/* Results */}
-                {evacResult?.evacuations && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {evacResult.evacuations.map((ev) => (
-                        <button
-                          key={ev.occupant_id}
-                          onClick={() => setSelectedOccupant(ev.occupant_id)}
-                          className={`rounded-lg px-3 py-1.5 text-[11px] font-medium transition ${
-                            selectedOccupant === ev.occupant_id
-                              ? "bg-purple-500/30 text-purple-300 border border-purple-500/40"
-                              : "bg-white/5 text-slate-400 border border-white/5 hover:bg-white/10"
-                          }`}
-                        >
-                          {ev.occupant_name} {ev.mobility === "wheelchair" ? "♿" : ""}
-                        </button>
-                      ))}
+                {/* Occupants */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] text-slate-400 uppercase tracking-wider">Occupants</label>
+                    <button onClick={addOccupant}
+                      className="rounded bg-teal-50 border border-teal-200 px-2 py-0.5 text-[10px] text-teal-600 hover:bg-teal-100 transition">
+                      + Add Person
+                    </button>
+                  </div>
+                  {occupants.length === 0 && (
+                    <p className="text-[10px] text-slate-400">No occupants added yet.</p>
+                  )}
+                  {occupants.map((occ, idx) => (
+                    <div key={occ.id} className="rounded-lg bg-slate-50 border border-slate-200 p-2 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <input
+                          value={occ.name}
+                          onChange={(e) => {
+                            const next = [...occupants];
+                            next[idx] = { ...next[idx], name: e.target.value };
+                            setOccupants(next);
+                          }}
+                          className="bg-transparent text-xs text-slate-700 outline-none w-24"
+                        />
+                        <button onClick={() => setOccupants((p) => p.filter((_, i) => i !== idx))}
+                          className="text-[10px] text-red-400 hover:text-red-600">✕</button>
+                      </div>
+                      <select
+                        value={occ.location_id}
+                        onChange={(e) => {
+                          const next = [...occupants];
+                          next[idx] = { ...next[idx], location_id: e.target.value };
+                          setOccupants(next);
+                        }}
+                        className="w-full rounded bg-white border border-slate-200 px-2 py-1 text-[10px] text-slate-700 outline-none"
+                      >
+                        {allLocations.map((l) => (
+                          <option key={l.id} value={l.id}>{l.id}</option>
+                        ))}
+                      </select>
+                      <div className="flex gap-2">
+                        {["normal", "wheelchair", "limited_mobility"].map((m) => (
+                          <label key={m} className="flex items-center gap-1 text-[10px] text-slate-500 cursor-pointer">
+                            <input type="radio" name={`mobility-${occ.id}`} checked={occ.mobility === m}
+                              onChange={() => {
+                                const next = [...occupants];
+                                next[idx] = { ...next[idx], mobility: m };
+                                setOccupants(next);
+                              }}
+                              className="accent-teal-600"
+                            />
+                            {m === "wheelchair" ? "♿ Wheelchair" : m === "limited_mobility" ? "🚶 Limited" : "✓ Normal"}
+                          </label>
+                        ))}
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </div>
 
-                    {/* Selected occupant route */}
-                    {selectedEvac && (
-                      <div className="rounded-xl bg-[#07111f] border border-white/5 p-4 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-white">{selectedEvac.occupant_name}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                            selectedEvac.success ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"
-                          }`}>
-                            {selectedEvac.success ? "Route found" : "No route"}
+              <button
+                onClick={runEvacuation}
+                disabled={!fireRoom || occupants.length === 0 || evacLoading}
+                className="rounded-xl bg-red-600 px-5 py-2 text-xs font-semibold text-white hover:bg-red-700 transition disabled:opacity-40 shadow-sm"
+              >
+                {evacLoading ? "Calculating routes..." : "🔥 Calculate Evacuation Routes"}
+              </button>
+
+              {/* Results */}
+              {evacResult?.evacuations && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {evacResult.evacuations.map((ev) => (
+                      <button
+                        key={ev.occupant_id}
+                        onClick={() => setSelectedOccupant(ev.occupant_id)}
+                        className={`rounded-lg px-3 py-1.5 text-[11px] font-medium transition ${
+                          selectedOccupant === ev.occupant_id
+                            ? "bg-teal-50 text-teal-700 border border-teal-200"
+                            : "bg-slate-50 text-slate-500 border border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        {ev.occupant_name} {ev.mobility === "wheelchair" ? "♿" : ""}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Selected occupant route */}
+                  {selectedEvac && (
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-800">{selectedEvac.occupant_name}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                          selectedEvac.success ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-red-50 text-red-600 border border-red-200"
+                        }`}>
+                          {selectedEvac.success ? "Route found" : "No route"}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div><span className="text-slate-400">Mobility:</span> <span className="text-slate-600">{selectedEvac.mobility}</span></div>
+                        <div><span className="text-slate-400">Exit:</span> <span className="text-slate-600">{selectedEvac.recommended_exit}</span></div>
+                        <div><span className="text-slate-400">Risk:</span> <span className={`font-semibold ${
+                          selectedEvac.risk === "LOW" ? "text-teal-600" : selectedEvac.risk === "MEDIUM" ? "text-amber-600" : "text-red-600"
+                        }`}>{selectedEvac.risk}</span></div>
+                        <div><span className="text-slate-400">Distance:</span> <span className="text-slate-600">{selectedEvac.distance}</span></div>
+                      </div>
+                      {selectedEvac.mobility === "wheelchair" && (
+                        <div className="flex gap-3 text-[10px]">
+                          <span className={selectedEvac.uses_stairs ? "text-red-600" : "text-teal-600"}>
+                            {selectedEvac.uses_stairs ? "⚠ Uses stairs" : "✓ No stairs"}
+                          </span>
+                          <span className={selectedEvac.uses_ramp ? "text-teal-600" : "text-slate-400"}>
+                            {selectedEvac.uses_ramp ? "✓ Uses ramp" : "No ramp"}
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-[11px]">
-                          <div><span className="text-slate-500">Mobility:</span> <span className="text-slate-300">{selectedEvac.mobility}</span></div>
-                          <div><span className="text-slate-500">Exit:</span> <span className="text-slate-300">{selectedEvac.recommended_exit}</span></div>
-                          <div><span className="text-slate-500">Risk:</span> <span className={`font-semibold ${
-                            selectedEvac.risk === "LOW" ? "text-emerald-400" : selectedEvac.risk === "MEDIUM" ? "text-yellow-400" : "text-red-400"
-                          }`}>{selectedEvac.risk}</span></div>
-                          <div><span className="text-slate-500">Distance:</span> <span className="text-slate-300">{selectedEvac.distance}</span></div>
+                      )}
+                      {selectedEvac.success && selectedEvac.route && (
+                        <div className="mt-2">
+                          <p className="text-[10px] text-slate-400 mb-1">Route:</p>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {selectedEvac.route.map((node: string, i: number) => (
+                              <span key={i} className="flex items-center gap-1">
+                                <span className="rounded bg-white border border-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600">{node}</span>
+                                {i < selectedEvac.route.length - 1 && <span className="text-slate-300">→</span>}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                        {selectedEvac.mobility === "wheelchair" && (
-                          <div className="flex gap-3 text-[10px]">
-                            <span className={selectedEvac.uses_stairs ? "text-red-400" : "text-emerald-400"}>
-                              {selectedEvac.uses_stairs ? "⚠ Uses stairs" : "✓ No stairs"}
-                            </span>
-                            <span className={selectedEvac.uses_ramp ? "text-emerald-400" : "text-slate-500"}>
-                              {selectedEvac.uses_ramp ? "✓ Uses ramp" : "No ramp"}
-                            </span>
-                          </div>
-                        )}
-                        {selectedEvac.success && selectedEvac.route && (
-                          <div className="mt-2">
-                            <p className="text-[10px] text-slate-500 mb-1">Route:</p>
-                            <div className="flex items-center gap-1 flex-wrap">
-                              {selectedEvac.route.map((node: string, i: number) => (
-                                <span key={i} className="flex items-center gap-1">
-                                  <span className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-slate-300">{node}</span>
-                                  {i < selectedEvac.route.length - 1 && <span className="text-slate-600">→</span>}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {!selectedEvac.success && (
-                          <p className="text-[11px] text-red-400/80">{selectedEvac.message}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            )}
+                      )}
+                      {!selectedEvac.success && (
+                        <p className="text-[11px] text-red-500">{selectedEvac.message}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
 
-            {result && result.floor_plan && result.floor_plan.elements.length === 0 && (
-            <section className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-8 text-center">
-              <p className="text-sm text-yellow-200/70">
+          {result && result.floor_plan && result.floor_plan.elements.length === 0 && (
+            <section className="rounded-xl border border-amber-200 bg-amber-50 p-8 text-center">
+              <p className="text-sm text-amber-700">
                 Unable to generate a reliable floor plan.
               </p>
-              <p className="mt-2 text-[11px] text-yellow-200/50">
+              <p className="mt-2 text-[11px] text-amber-600">
                 Some building areas could not be reconstructed. Please add more overlapping photographs
                 or review the detected landmarks.
               </p>
@@ -680,7 +680,7 @@ function ImageCarousel({
       {/* Left arrow */}
       <button
         onClick={() => scroll(-1)}
-        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white text-sm hover:bg-black/80 transition"
+        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 text-sm hover:bg-slate-50 transition shadow-sm"
       >
         ←
       </button>
@@ -696,7 +696,7 @@ function ImageCarousel({
             key={i}
             className="relative flex-shrink-0 w-[180px] group"
           >
-            <div className="aspect-[4/3] overflow-hidden rounded-xl border border-white/10 bg-[#07111f]">
+            <div className="aspect-[4/3] overflow-hidden rounded-xl border border-slate-200 bg-white">
               <img
                 src={src}
                 alt={`View ${i + 1}`}
@@ -704,13 +704,13 @@ function ImageCarousel({
               />
             </div>
             {/* Index badge */}
-            <div className="absolute left-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold">
+            <div className="absolute left-2 top-2 rounded bg-teal-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
               {i + 1}
             </div>
             {/* Remove button */}
             <button
               onClick={() => onRemove(i)}
-              className="absolute right-2 top-2 rounded bg-black/70 px-1 py-0.5 text-[10px] text-red-400 opacity-0 group-hover:opacity-100 transition hover:bg-red-500/30"
+              className="absolute right-2 top-2 rounded bg-white border border-slate-200 px-1 py-0.5 text-[10px] text-red-500 opacity-0 group-hover:opacity-100 transition hover:bg-red-50 shadow-sm"
             >
               ✕
             </button>
@@ -721,7 +721,7 @@ function ImageCarousel({
       {/* Right arrow */}
       <button
         onClick={() => scroll(1)}
-        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white text-sm hover:bg-black/80 transition"
+        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 text-sm hover:bg-slate-50 transition shadow-sm"
       >
         →
       </button>
@@ -743,9 +743,9 @@ function AnalysisStat({
   highlight?: boolean;
 }) {
   return (
-    <div className="rounded-xl bg-[#07111f] p-3">
-      <p className="text-[10px] text-slate-500">{label}</p>
-      <p className={`mt-1 text-lg font-bold ${highlight ? "text-emerald-300" : ""}`}>{value}</p>
+    <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+      <p className="text-[10px] text-slate-400">{label}</p>
+      <p className={`mt-1 text-lg font-bold ${highlight ? "text-teal-600" : "text-slate-800"}`}>{value}</p>
     </div>
   );
 }
