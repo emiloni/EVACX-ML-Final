@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Python model files
+*.pt
+*.onnx
+*.pth
+
+# Node
+node_modules/
+.next/
+out/
+
+# Environment variables
+.env.local
+.env.development.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Generated files
+uploads/
+outputs/
+temp/
